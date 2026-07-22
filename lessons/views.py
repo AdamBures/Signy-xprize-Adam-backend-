@@ -1,10 +1,13 @@
 import os
 import tempfile
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils.text import slugify
+from django.db.models import Avg, Count
 
 from .models import Category, Word, UserProgress
 from .serializers import CategorySerializer, WordSerializer, WordListSerializer, UserProgressSerializer
@@ -16,14 +19,39 @@ class CategoryListView(generics.ListAPIView):
 
 class WordListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
-    serializer_class = WordListSerializer
 
-    def get_queryset(self):
-        queryset = Word.objects.all()
-        category_id = self.request.query_params.get('category')
+    def get(self, request):
+        words = Word.objects.all()
+        category_id = request.query_params.get('category')
         if category_id:
-            queryset = queryset.filter(category_id=category_id)
-        return queryset
+            words = words.filter(category_id=category_id)
+
+        # Get completed word IDs if user is authenticated
+        completed_word_ids = set()
+        user_scores = {}
+        if request.user.is_authenticated:
+            for p in UserProgress.objects.filter(user=request.user):
+                if p.completed:
+                    completed_word_ids.add(p.word_id)
+                user_scores[p.word_id] = round(p.best_score)
+
+        results = []
+        for w in words:
+            score_str = f"{user_scores[w.id]}%" if w.id in user_scores else 'New'
+            results.append({
+                'id': w.id,
+                'name': w.name,
+                'slug': w.slug,
+                'category_name': w.category.name if w.category else 'General',
+                'description': w.description,
+                'is_premium': w.is_premium,
+                'level': 'Essential' if w.is_premium else 'Beginner',
+                'time': '4 min',
+                'score': score_str,
+                'completed': w.id in completed_word_ids
+            })
+
+        return Response({'results': results, 'count': len(results)})
 
 class WordDetailView(generics.RetrieveAPIView):
     queryset = Word.objects.all()
@@ -32,18 +60,75 @@ class WordDetailView(generics.RetrieveAPIView):
     lookup_field = 'id'
 
 class UserProgressListView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        progress = UserProgress.objects.filter(user=request.user)
-        serializer = UserProgressSerializer(progress, many=True)
-        return Response(serializer.data)
+        if not request.user.is_authenticated:
+            # Fallback for unauthenticated guest
+            return Response({
+                'streak': 1,
+                'completed': 0,
+                'accuracy': 0,
+                'practice_time': '0m',
+                'week_bars': [0, 0, 0, 0, 0, 0, 0],
+                'results': []
+            })
+
+        user = request.user
+        progress_qs = UserProgress.objects.filter(user=user)
+        completed_count = progress_qs.filter(completed=True).count()
+        total_attempts = progress_qs.count()
+
+        # Real average accuracy
+        avg_score = progress_qs.aggregate(Avg('best_score'))['best_score__avg']
+        accuracy = round(avg_score, 1) if avg_score is not None else 0.0
+
+        # Real practice time (approx 3 minutes per attempted sign)
+        practice_time_minutes = total_attempts * 3
+        practice_time_str = f"{practice_time_minutes}m" if practice_time_minutes < 60 else f"{practice_time_minutes // 60}h {practice_time_minutes % 60}m"
+
+        # Real weekly bar chart calculation (Mon..Sun for current week)
+        now = timezone.now()
+        start_of_week = now.date() - timedelta(days=now.weekday())
+        week_bars = [0] * 7
+
+        for p in progress_qs:
+            if p.updated_at:
+                p_date = p.updated_at.date()
+                delta_days = (p_date - start_of_week).days
+                if 0 <= delta_days < 7:
+                    # Bar height based on score on that day (max 100)
+                    week_bars[delta_days] = max(week_bars[delta_days], int(p.best_score))
+
+        # Real streak calculation
+        streak = 0
+        current_date = now.date()
+        while True:
+            has_activity = progress_qs.filter(updated_at__date=current_date).exists()
+            if has_activity:
+                streak += 1
+                current_date -= timedelta(days=1)
+            else:
+                if streak == 0 and current_date == now.date():
+                    # Check yesterday if today hasn't had activity yet
+                    current_date -= timedelta(days=1)
+                    continue
+                break
+
+        if streak == 0 and total_attempts > 0:
+            streak = 1
+
+        serializer = UserProgressSerializer(progress_qs, many=True)
+        return Response({
+            'streak': streak,
+            'completed': completed_count,
+            'accuracy': accuracy,
+            'practice_time': practice_time_str,
+            'week_bars': week_bars,
+            'results': serializer.data
+        })
 
 class UploadVideoWordView(APIView):
-    """
-    API Endpoint allowing admin users or developers to upload an MP4 video file.
-    The backend uses OpenCV + MediaPipe to extract hand landmarks and create/update a Word.
-    """
     permission_classes = [permissions.AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -56,7 +141,6 @@ class UploadVideoWordView(APIView):
         if not video_file or not word_name:
             return Response({'error': 'Fields video and name are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save uploaded file temporarily to process with OpenCV
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_video:
             for chunk in video_file.chunks():
                 temp_video.write(chunk)

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f7f2" />
+    <meta name="description" content="HandSign — approachable AI-powered ASL learning and sign translation." />
+    <meta name="color-scheme" content="light dark" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HandSign — Learn to connect" />
+    <meta property="og:description" content="Practice ASL with guided lessons, camera feedback and free-form sign translation." />
+    <meta name="api-base" content="/api/v1" />
+    <meta name="api-demo-fallback" content="true" />
+    <title>HandSign — Learn to connect</title>
+    <script>
+      (() => {
+        const requested = new URLSearchParams(location.search).get('theme');
+        const saved = localStorage.getItem('handsign_theme');
+        const theme = ['light','dark'].includes(requested) ? requested : saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0b1714' : '#f5f7f2';
+      })();
+    </script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2220%22 fill=%22%23235b4d%22/><text x=%2232%22 y=%2244%22 text-anchor=%22middle%22 font-size=%2237%22>🤟</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

@@ -14,17 +14,45 @@ from .serializers import UserSerializer, RegisterSerializer
 User = get_user_model()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
+def format_user_data(user):
+    data = UserSerializer(user).data
+    data['name'] = user.get_full_name() or user.username
+    return data
+
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
+        data = request.data.copy()
+        username = data.get('username') or data.get('email')
+        email = data.get('email', '')
+
+        if not username:
+            return Response({'error': 'Username or email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        data['username'] = username
+
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'A user with that username or email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if email and User.objects.filter(email=email).exists():
+            return Response({'error': 'A user with that username or email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'name' in data and 'first_name' not in data:
+            name_parts = data['name'].split(' ', 1)
+            data['first_name'] = name_parts[0]
+            if len(name_parts) > 1:
+                data['last_name'] = name_parts[1]
+
+        serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
+            user_data = format_user_data(user)
             return Response({
                 'token': token.key,
-                'user': UserSerializer(user).data
+                'access': token.key,
+                'user': user_data
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -32,12 +60,11 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        username = request.data.get('username')
+        username = request.data.get('username') or request.data.get('email')
         password = request.data.get('password')
         
         user = authenticate(username=username, password=password)
-        if not user:
-            # Fallback to email login if username fails
+        if not user and username:
             try:
                 user_obj = User.objects.get(email=username)
                 user = authenticate(username=user_obj.username, password=password)
@@ -46,27 +73,68 @@ class LoginView(APIView):
 
         if user:
             token, _ = Token.objects.get_or_create(user=user)
+            user_data = format_user_data(user)
             return Response({
                 'token': token.key,
-                'user': UserSerializer(user).data
+                'access': token.key,
+                'user': user_data
             })
-        return Response({'error': 'Neplatné přihlašovací údaje (Invalid credentials)'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserProfileView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        if not request.user.is_authenticated:
+            return Response({'name': 'Guest User', 'email': 'guest@example.com', 'is_subscribed': False, 'avatar': '👤'})
+        return Response(format_user_data(request.user))
+
+    def patch(self, request):
+        name = request.data.get('name')
+        email = request.data.get('email')
+        avatar = request.data.get('avatar')
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if request.user.is_authenticated:
+            user = request.user
+            if new_password:
+                if current_password and not user.check_password(current_password):
+                    return Response({'error': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+                if len(new_password) < 6:
+                    return Response({'error': 'New password must be at least 6 characters long.'}, status=status.HTTP_400_BAD_REQUEST)
+                user.set_password(new_password)
+
+            if name:
+                parts = name.split(' ', 1)
+                user.first_name = parts[0]
+                user.last_name = parts[1] if len(parts) > 1 else ''
+            if email:
+                user.email = email
+            if avatar:
+                user.avatar = avatar
+
+            user.save()
+            return Response(format_user_data(user))
+        else:
+            return Response({
+                'name': name or 'Alex Morgan',
+                'email': email or 'alex@example.com',
+                'avatar': avatar or '👤',
+                'is_subscribed': False
+            })
 
 class CreateStripeCheckoutSessionView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        user_id = str(request.user.id) if request.user.is_authenticated else 'guest'
+        user_email = request.user.email if request.user.is_authenticated and request.user.email else None
+
         if not settings.STRIPE_SECRET_KEY:
-            # Fallback for dev mode when Stripe API key is not yet set
             return Response({
-                'checkout_url': f"{settings.FRONTEND_URL}/payment-success?mock=true",
-                'message': 'Development mode: Stripe key not configured. Mock checkout link returned.'
+                'url': f"{settings.FRONTEND_URL}/#pricing?payment=success",
+                'message': 'Development mode: Mock checkout link returned.'
             })
 
         try:
@@ -77,8 +145,8 @@ class CreateStripeCheckoutSessionView(APIView):
                         'price_data': {
                             'currency': 'usd',
                             'product_data': {
-                                'name': 'AI Tutor Znakové řeči - Plný přístup',
-                                'description': 'Odemkne všechny lekce a AI zpětnou vazbu v reálném čase',
+                                'name': 'HandSign - Family Full Access',
+                                'description': 'Unlock all sign language lessons & real-time Gemini AI coaching',
                             },
                             'unit_amount': 1000,  # $10.00 USD
                         },
@@ -86,12 +154,12 @@ class CreateStripeCheckoutSessionView(APIView):
                     },
                 ],
                 mode='payment',
-                client_reference_id=str(request.user.id),
-                customer_email=request.user.email or None,
-                success_url=f"{settings.FRONTEND_URL}/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{settings.FRONTEND_URL}/payment-cancel",
+                client_reference_id=user_id,
+                customer_email=user_email,
+                success_url=f"{settings.FRONTEND_URL}/#pricing?payment=success",
+                cancel_url=f"{settings.FRONTEND_URL}/#pricing?payment=cancelled",
             )
-            return Response({'checkout_url': checkout_session.url})
+            return Response({'url': checkout_session.url})
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -111,7 +179,6 @@ class StripeWebhookView(APIView):
             except (ValueError, stripe.error.SignatureVerificationError):
                 return HttpResponse(status=400)
         else:
-            # If webhook secret is not set, parse payload directly for testing
             import json
             try:
                 event = json.loads(payload)
@@ -123,7 +190,7 @@ class StripeWebhookView(APIView):
 
         if event_type == 'checkout.session.completed':
             user_id = data_object.get('client_reference_id')
-            if user_id:
+            if user_id and user_id != 'guest':
                 try:
                     user = User.objects.get(id=user_id)
                     user.is_subscribed = True

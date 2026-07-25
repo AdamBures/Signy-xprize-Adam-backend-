@@ -200,3 +200,146 @@ class StripeWebhookView(APIView):
                     pass
 
         return HttpResponse(status=200)
+
+
+from django.db.models import Q
+from users.models import Friendship
+
+class FriendshipListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Friends list (accepted friendships)
+        friendships = Friendship.objects.filter(
+            (Q(from_user=user) | Q(to_user=user)) & Q(status='accepted')
+        )
+        friends_data = []
+        for f in friendships:
+            friend = f.to_user if f.from_user == user else f.from_user
+            friends_data.append({
+                'id': friend.id,
+                'username': friend.username,
+                'name': friend.get_full_name() or friend.username,
+                'avatar': friend.avatar,
+                'streak': friend.current_streak
+            })
+
+        # Sort friends by streak descending (gamification scoreboard!)
+        friends_data.sort(key=lambda x: x['streak'], reverse=True)
+
+        # 2. Pending incoming requests
+        pending_requests = Friendship.objects.filter(to_user=user, status='pending')
+        requests_data = []
+        for r in pending_requests:
+            requests_data.append({
+                'id': r.id,
+                'from_user': {
+                    'id': r.from_user.id,
+                    'username': r.from_user.username,
+                    'name': r.from_user.get_full_name() or r.from_user.username,
+                    'avatar': r.from_user.avatar
+                }
+            })
+
+        # 3. Suggestions (other users who are not friends or pending requests)
+        exclude_user_ids = [user.id]
+        all_relations = Friendship.objects.filter(Q(from_user=user) | Q(to_user=user))
+        for r in all_relations:
+            exclude_user_ids.append(r.from_user_id)
+            exclude_user_ids.append(r.to_user_id)
+        
+        exclude_user_ids = list(set(exclude_user_ids))
+        suggestions = User.objects.exclude(id__in=exclude_user_ids)[:5]
+        suggestions_data = []
+        for s in suggestions:
+            suggestions_data.append({
+                'id': s.id,
+                'username': s.username,
+                'name': s.get_full_name() or s.username,
+                'avatar': s.avatar,
+                'streak': s.current_streak
+            })
+
+        return Response({
+            'friends': friends_data,
+            'requests': requests_data,
+            'suggestions': suggestions_data
+        })
+
+class FriendshipRequestView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        to_user_id = request.data.get('to_user_id')
+        username = request.data.get('username')
+
+        to_user = None
+        if to_user_id:
+            try:
+                to_user = User.objects.get(id=to_user_id)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        elif username:
+            try:
+                to_user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({'error': 'User with that username not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not to_user:
+            return Response({'error': 'to_user_id or username required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if to_user == user:
+            return Response({'error': 'You cannot add yourself as a friend.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exists = Friendship.objects.filter(
+            (Q(from_user=user) & Q(to_user=to_user)) | (Q(from_user=to_user) & Q(to_user=user))
+        ).first()
+
+        if exists:
+            if exists.status == 'accepted':
+                return Response({'error': 'You are already friends.'}, status=status.HTTP_400_BAD_REQUEST)
+            elif exists.status == 'pending':
+                if exists.from_user == user:
+                    return Response({'error': 'Friend request already sent and pending.'}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    exists.status = 'accepted'
+                    exists.save()
+                    return Response({'message': 'Friend request accepted automatically.', 'status': 'accepted'})
+            else:
+                exists.status = 'pending'
+                exists.from_user = user
+                exists.to_user = to_user
+                exists.save()
+                return Response({'message': 'Friend request sent.', 'status': 'pending'})
+
+        Friendship.objects.create(from_user=user, to_user=to_user, status='pending')
+        return Response({'message': 'Friend request sent.', 'status': 'pending'})
+
+class FriendshipRespondView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        friendship_id = request.data.get('friendship_id')
+        action = request.data.get('action')
+
+        if not friendship_id or action not in ['accept', 'reject']:
+            return Response({'error': 'friendship_id and valid action (accept/reject) required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            friendship = Friendship.objects.get(id=friendship_id, to_user=user, status='pending')
+        except Friendship.DoesNotExist:
+            return Response({'error': 'Friend request not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if action == 'accept':
+            friendship.status = 'accepted'
+            friendship.save()
+            return Response({'message': 'Friend request accepted.'})
+        else:
+            friendship.status = 'rejected'
+            friendship.save()
+            return Response({'message': 'Friend request rejected.'})
+

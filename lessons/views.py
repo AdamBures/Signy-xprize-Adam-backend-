@@ -67,7 +67,7 @@ class UserProgressListView(APIView):
         if not request.user.is_authenticated:
             # Fallback for unauthenticated guest
             return Response({
-                'streak': 1,
+                'streak': 0,
                 'completed': 0,
                 'accuracy': 0,
                 'practice_time': '0m',
@@ -116,8 +116,6 @@ class UserProgressListView(APIView):
                     continue
                 break
 
-        if streak == 0 and total_attempts > 0:
-            streak = 1
 
         serializer = UserProgressSerializer(progress_qs, many=True)
         return Response({

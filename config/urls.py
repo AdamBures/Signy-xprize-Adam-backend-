@@ -5,8 +5,8 @@ from django.views.static import serve
 from django.conf import settings
 
 from evaluation.views import FrontendIndexView, HealthCheckView, EvaluateSignView, TranslateClipView
-from users.views import RegisterView, LoginView, UserProfileView, CreateStripeCheckoutSessionView
-from lessons.views import WordListView, UserProgressListView
+from users.views import RegisterView, LoginView, UserProfileView, CreateStripeCheckoutSessionView, FriendshipListView, FriendshipRequestView, FriendshipRespondView
+from lessons.views import WordListView, WordDetailView, UserProgressListView
 
 urlpatterns = [
     # Frontend SPA index page at root
@@ -27,11 +27,15 @@ urlpatterns = [
     path('api/v1/auth/register/', RegisterView.as_view(), name='api-v1-register'),
     path('api/v1/auth/login/', LoginView.as_view(), name='api-v1-login'),
     path('api/v1/lessons/', WordListView.as_view(), name='api-v1-lessons'),
+    path('api/v1/lessons/<int:id>/', WordDetailView.as_view(), name='api-v1-lesson-detail'),
     path('api/v1/me/progress/', UserProgressListView.as_view(), name='api-v1-progress'),
     path('api/v1/me/', UserProfileView.as_view(), name='api-v1-me'),
     path('api/v1/practice/evaluate/', EvaluateSignView.as_view(), name='api-v1-evaluate'),
     path('api/v1/translate/', TranslateClipView.as_view(), name='api-v1-translate'),
     path('api/v1/billing/checkout/', CreateStripeCheckoutSessionView.as_view(), name='api-v1-checkout'),
+    path('api/v1/friends/', FriendshipListView.as_view(), name='api-v1-friends'),
+    path('api/v1/friends/request/', FriendshipRequestView.as_view(), name='api-v1-friends-request'),
+    path('api/v1/friends/respond/', FriendshipRespondView.as_view(), name='api-v1-friends-respond'),
 
     # Modular API routes
     path('api/users/', include('users.urls')),

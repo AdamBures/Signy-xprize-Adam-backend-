@@ -1,5 +1,5 @@
-import { Api } from './api.js';
-import { I18n } from './i18n.js';
+import { Api } from './api.js?v=2';
+import { I18n } from './i18n.js?v=2';
 
 const APP_ROUTES = new Set(['home', 'dashboard', 'library', 'progress', 'profile', 'practice', 'translate']);
 const savedUser = (() => { try { return JSON.parse(localStorage.getItem('handsign_user')); } catch { return null; } })();
@@ -7,7 +7,8 @@ const state = {
   route: routeFromHash(), cameraStream: null, lesson: 'Hello',
   recorder: null, recordedChunks: [], recordingStartedAt: 0,
   timerId: null, autoStopTimer: null, landmarkTimer: null, landmarkFrames: [], returnRoute: 'dashboard',
-  user: savedUser || { name:'Alex Morgan', email:'alex@example.com' }, lastModalFocus:null
+  user: savedUser || { name:'Alex Morgan', email:'alex@example.com' }, lastModalFocus:null,
+  referenceLandmarks: []
 };
 
 const icons = {
@@ -44,6 +45,7 @@ async function fetchLessonsFromApi() {
     const data = await Api.lessons();
     if (data.results && data.results.length > 0) {
       lessons = data.results.map(w => ({
+        id: w.id,
         name: w.name,
         emoji: EMOJI_MAP[w.name] || (w.name.startsWith('Letter') ? '🔤' : '🤟'),
         level: w.level || (w.is_premium ? 'Essential' : 'Beginner'),
@@ -105,7 +107,7 @@ const sideItems = [
   ['dashboard','Home'], ['library','Lessons'], ['translate','Translate'],
   ['progress','Progress'], ['profile','Profile']
 ];
-function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${label}</span></button>`).join('')}</nav><button class="side-footer" data-route="progress"><b>7 day streak 🔥</b><p>Practice one lesson today to keep it going.</p></button></aside>`;}
+function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${label}</span></button>`).join('')}</nav><button class="side-footer" data-route="progress"><b>0 day streak 🔥</b><p>Practice one lesson today to keep it going.</p></button></aside>`;}
 function appHeader(title,subtitle){
   const avatar = state.user.avatar || '';
   const isImage = avatar.startsWith('data:image') || avatar.startsWith('http');
@@ -121,7 +123,7 @@ function appHeader(title,subtitle){
       </div>
       <div class="user-row">
         ${preferenceControls()}
-        <span class="streak">🔥 7 day streak</span>
+        <span class="streak">🔥 0 day streak</span>
         <div class="profile-dropdown-wrapper" style="position:relative;">
           <button class="profile-trigger" aria-label="Open user menu" data-profile-toggle>
             ${userAvatarHtml}
@@ -148,7 +150,7 @@ function immersiveShell(content){return `<div class="app-layout immersive-layout
 
 function dashboard(){const firstName=escapeHtml(state.user.name?.split(' ')[0]||'Alex');const greeting=`${I18n.t('Good morning')}, ${firstName} 👋`;return appShell(`<div class="dash-grid"><section class="continue"><span class="eyebrow">Continue learning</span><h2>Everyday essentials</h2><p>Lesson 3 of 8 · You're learning words that make daily routines easier.</p><div class="progress"><i style="width:37%"></i></div><button class="btn btn-lime" data-lesson="More">Continue lesson →</button></section><section class="stat-card"><span class="eyebrow">Weekly goal</span><div class="stat-ring"><strong>5 / 7</strong></div><p style="text-align:center;color:var(--muted);font-size:13px">Two more days to reach your goal</p></section></div><section class="dashboard-section"><div class="dashboard-title"><h2>Recommended for you</h2><button class="btn btn-ghost small-btn" data-route="library">See all</button></div>${lessonCards('dashboard-lessons',4)}</section>`,greeting,'Ready for one small step forward?');}
 function library(){return appShell(`<div class="filter-row"><button class="filter active" data-filter="all">All lessons</button><button class="filter" data-filter="Beginner">Beginner</button><button class="filter" data-filter="Essential">Essential</button><button class="filter" data-filter="Everyday">Everyday</button></div><div id="libraryGrid">${lessonCards('library-lessons')}</div>`,'Lesson library','Practical signs, organized into small and friendly lessons.');}
-function progressPage(){return appShell(`<div class="metric-grid"><article class="metric"><span>Signs learned</span><strong>12</strong><small>+4 this week</small></article><article class="metric"><span>Average accuracy</span><strong>86%</strong><small>↑ 7% this month</small></article><article class="metric"><span>Practice time</span><strong>48m</strong><small>Across 9 sessions</small></article></div><section class="progress-panel"><div class="dashboard-title"><h2>Your week</h2><span class="muted">Goal: 5 minutes a day</span></div><div class="week-bars">${['M','T','W','T','F','S','S'].map((d,i)=>`<div><i style="height:${[55,82,45,92,68,30,15][i]}%"></i><span>${d}</span></div>`).join('')}</div></section>`,'Your progress','Every practice session is a meaningful step.');}
+function progressPage(){return appShell(`<div class="metric-grid"><article class="metric"><span>Signs learned</span><strong>0</strong><small id="metricCompletedSub">Completed lessons</small></article><article class="metric"><span>Average accuracy</span><strong>0%</strong><small id="metricAccuracySub">Based on attempts</small></article><article class="metric"><span>Practice time</span><strong>0m</strong><small id="metricTimeSub">Across 0 attempts</small></article></div><section class="progress-panel"><div class="dashboard-title"><h2>Your week</h2><span class="muted">Goal: 5 minutes a day</span></div><div class="week-bars">${['M','T','W','T','F','S','S'].map((d,i)=>`<div><i style="height:${[55,82,45,92,68,30,15][i]}%"></i><span>${d}</span></div>`).join('')}</div></section><section class="progress-panel"><div class="dashboard-title"><h2>Friends & Community</h2><span class="muted">Connect with others to compare streaks!</span></div><div class="social-grid"><div class="social-column"><h3>Active Streaks</h3><div id="friendsList" class="friends-list-container"><p class="muted small-msg">Loading friends...</p></div></div><div class="social-column"><div class="social-subcolumn" id="pendingRequestsContainer" style="display:none;margin-bottom:20px"><h3>Pending Invites</h3><div id="pendingRequestsList"></div></div><h3>Suggested for You</h3><div id="suggestionsList" class="suggestions-list-container"><p class="muted small-msg">Loading suggestions...</p></div><div class="add-friend-box" style="margin-top:20px"><h3>Add Friend by Username</h3><div class="search-bar"><input type="text" id="addFriendUsernameInput" placeholder="Enter username..."><button class="btn btn-lime small-btn" id="addFriendSubmitBtn">Add</button></div><p id="addFriendStatusMsg" class="status-msg" style="display:none;font-size:12px;margin-top:5px"></p></div></div></div></section>`,'Your progress','Every practice session is a meaningful step.');}
 function profilePage(){
   const isSubscribed = state.user.is_subscribed;
   const avatar = state.user.avatar || '👤';
@@ -223,7 +225,7 @@ function profilePage(){
   `,'Profile & settings','Manage your user account, security and custom avatar.');
 }
 
-function practice(){ const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library'; return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn" style="display:inline-flex;align-items:center;gap:8px;margin:10px auto;padding:10px 16px;font-size:14px;border-radius:99px;background:var(--paper);border:1px solid var(--line);cursor:pointer;font-weight:700;color:var(--ink);transition:all .2s ease;"><span>📺</span> Watch Video Example</button>` : ''}<div class="tips"><span>💡</span><span><strong>Quick tip</strong><br>Face your palm forward and make the motion gently, not too fast.</span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign">Check my sign</button></div></aside></main>`);}
+function practice(){ const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library'; return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><canvas id="overlayCanvas" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); pointer-events:none; z-index:10;"></canvas><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn" style="display:inline-flex;align-items:center;gap:8px;margin:10px auto;padding:10px 16px;font-size:14px;border-radius:99px;background:var(--paper);border:1px solid var(--line);cursor:pointer;font-weight:700;color:var(--ink);transition:all .2s ease;"><span>📺</span> Watch Video Example</button>` : ''}<div class="tips"><span>💡</span><span><strong>Quick tip</strong><br>Face your palm forward and make the motion gently, not too fast.</span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign">Check my sign</button></div></aside></main>`);}
 
 function translatePage(){const back=state.returnRoute==='home'?'home':'dashboard';return immersiveShell(`<main class="practice translate-page"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">🤟</div><h2>Your signing space</h2><p>Turn on the camera, then press “Start signing”. Use natural pauses between phrases.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="recordingPill"><i class="live-dot"></i> Ready to translate</span>${preferenceControls()}</div></header><div class="tracking-box"></div><div class="record-timer" id="recordTimer">00:00</div></div></section><aside class="practice-side translator-side"><span class="eyebrow">Free translation · ASL → English</span><h1>Sign freely</h1><p>Show a phrase of up to 20 seconds. HandSign sends the captured sequence to <code>POST /translate/</code> and returns plain text.</p><div class="translation-result empty" id="translationResult"><span>Translation will appear here</span><strong>...</strong></div><div class="translation-tools"><button class="tool-button" id="copyTranslation" disabled>Copy text</button><button class="tool-button" id="speakTranslation" disabled>Read aloud</button></div><div class="privacy-note">🔒 <span>Camera data is used only for this translation. In demo mode, no clip leaves your browser.</span></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-lime" id="recordToggle">Start signing</button></div></aside></main>`);}
 
@@ -248,13 +250,47 @@ function render(){
   document.querySelector('#app').innerHTML = (views[state.route] || home)();
   I18n.apply(document.querySelector('#app')); bind(); window.scrollTo(0,0);
   fetchLessonsFromApi();
+  if(state.route!=='home' && state.route!=='') updateGlobalStreak();
   if(state.route==='dashboard') hydrateDashboard();
   if(state.route==='progress') hydrateProgressPage();
   if(state.route==='practice'){
     const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
-    if(l&&l.video_url){
-      setTimeout(()=>showModal('video'),150);
+    if(l){
+      if(l.video_url){
+        setTimeout(()=>showModal('video'),150);
+      }
+      loadLessonReference(l.id);
     }
+  }
+}
+
+async function updateGlobalStreak() {
+  if (!isAuthenticated()) {
+    const streakEl = document.querySelector('.streak');
+    if (streakEl) streakEl.textContent = `🔥 0 ${I18n.t('day streak')}`;
+    const sideStreak = document.querySelector('.side-footer b');
+    if (sideStreak) sideStreak.textContent = `0 ${I18n.t('day streak')} 🔥`;
+    return;
+  }
+  try {
+    const data = await Api.progress();
+    const streakEl = document.querySelector('.streak');
+    if (streakEl && data.streak !== undefined) streakEl.textContent = `🔥 ${data.streak} ${I18n.t('day streak')}`;
+    const sideStreak = document.querySelector('.side-footer b');
+    if (sideStreak && data.streak !== undefined) sideStreak.textContent = `${data.streak} ${I18n.t('day streak')} 🔥`;
+  } catch (e) {
+    console.info('Global streak update info:', e);
+  }
+}
+
+async function loadLessonReference(id) {
+  state.referenceLandmarks = [];
+  if (!id) return;
+  try {
+    const detail = await Api.lessonDetail(id);
+    state.referenceLandmarks = detail.reference_landmarks || [];
+  } catch (e) {
+    console.info('Ghost overlay loader info:', e);
   }
 }
 async function hydrateDashboard(){
@@ -296,6 +332,21 @@ async function hydrateProgressPage(){
     const sideStreak = document.querySelector('.side-footer b');
     if (sideStreak && data.streak !== undefined) sideStreak.textContent = `${data.streak} ${I18n.t('day streak')} 🔥`;
 
+    const subCompleted = document.getElementById('metricCompletedSub');
+    const subAccuracy = document.getElementById('metricAccuracySub');
+    const subTime = document.getElementById('metricTimeSub');
+    if (subCompleted) {
+      const activeDays = data.week_bars ? data.week_bars.filter(x => x > 0).length : 0;
+      subCompleted.textContent = `Active ${activeDays} days this week`;
+    }
+    if (subAccuracy) {
+      subAccuracy.textContent = data.accuracy > 0 ? "Overall average accuracy" : "No evaluations recorded";
+    }
+    if (subTime) {
+      const attemptsCount = data.results ? data.results.length : 0;
+      subTime.textContent = `Across ${attemptsCount} attempts`;
+    }
+
     if (Array.isArray(data.week_bars)) {
       const barElements = document.querySelectorAll('.week-bars i');
       barElements.forEach((bar, idx) => {
@@ -304,8 +355,100 @@ async function hydrateProgressPage(){
         }
       });
     }
+    hydrateSocialPanel();
   } catch (e) {
     console.info('Progress hydration info:', e);
+  }
+}
+
+async function hydrateSocialPanel() {
+  try {
+    const data = await Api.getFriends();
+    
+    const friendsList = document.getElementById('friendsList');
+    if (friendsList) {
+      if (!data.friends || data.friends.length === 0) {
+        friendsList.innerHTML = `<p class="muted small-msg">No friends yet. Add some below!</p>`;
+      } else {
+        friendsList.innerHTML = data.friends.map(f => {
+          const isCustomImage = f.avatar.startsWith('data:image') || f.avatar.startsWith('http');
+          const avatarHtml = isCustomImage 
+            ? `<img src="${f.avatar}" class="friend-avatar-img">`
+            : `<span class="friend-avatar-icon">${f.avatar}</span>`;
+          return `
+            <div class="friend-row">
+              <div class="friend-info">
+                ${avatarHtml}
+                <div class="friend-name-col">
+                  <strong>${escapeHtml(f.name)}</strong>
+                  <span class="muted">@${escapeHtml(f.username)}</span>
+                </div>
+              </div>
+              <span class="streak-badge">🔥 ${f.streak}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    const pendingContainer = document.getElementById('pendingRequestsContainer');
+    const pendingList = document.getElementById('pendingRequestsList');
+    if (pendingContainer && pendingList) {
+      if (data.requests && data.requests.length > 0) {
+        pendingContainer.style.display = 'block';
+        pendingList.innerHTML = data.requests.map(r => {
+          const isCustomImage = r.from_user.avatar.startsWith('data:image') || r.from_user.avatar.startsWith('http');
+          const avatarHtml = isCustomImage 
+            ? `<img src="${r.from_user.avatar}" class="friend-avatar-img">`
+            : `<span class="friend-avatar-icon">${r.from_user.avatar}</span>`;
+          return `
+            <div class="request-row">
+              <div class="friend-info">
+                ${avatarHtml}
+                <div class="friend-name-col">
+                  <strong>${escapeHtml(r.from_user.name)}</strong>
+                  <span class="muted">@${escapeHtml(r.from_user.username)}</span>
+                </div>
+              </div>
+              <div class="request-actions">
+                <button class="btn btn-lime small-btn accept-friend-btn" data-id="${r.id}">Accept</button>
+                <button class="btn btn-danger small-btn reject-friend-btn" data-id="${r.id}">Decline</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        pendingContainer.style.display = 'none';
+      }
+    }
+
+    const suggestionsList = document.getElementById('suggestionsList');
+    if (suggestionsList) {
+      if (!data.suggestions || data.suggestions.length === 0) {
+        suggestionsList.innerHTML = `<p class="muted small-msg">No suggestions available.</p>`;
+      } else {
+        suggestionsList.innerHTML = data.suggestions.map(s => {
+          const isCustomImage = s.avatar.startsWith('data:image') || s.avatar.startsWith('http');
+          const avatarHtml = isCustomImage 
+            ? `<img src="${s.avatar}" class="friend-avatar-img">`
+            : `<span class="friend-avatar-icon">${s.avatar}</span>`;
+          return `
+            <div class="suggestion-row">
+              <div class="friend-info">
+                ${avatarHtml}
+                <div class="friend-name-col">
+                  <strong>${escapeHtml(s.name)}</strong>
+                  <span class="muted">@${escapeHtml(s.username)}</span>
+                </div>
+              </div>
+              <button class="btn btn-lime small-btn add-suggested-btn" data-id="${s.id}">Add</button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  } catch (e) {
+    console.error('Social panel hydration error:', e);
   }
 }
 function go(route){ if(!APP_ROUTES.has(route)) route='home';if(['translate','practice'].includes(route)&&!['translate','practice'].includes(state.route))state.returnRoute=state.route;const hash=`#/${route}`; if(location.hash===hash){state.route=route;render();}else location.hash=hash; }
@@ -325,15 +468,105 @@ function bindModal(){
 }
 function toast(msg){ const el=document.querySelector('#toast'); el.textContent=I18n.t(msg); el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),3200); }
 
+let ghostIntervalId = null;
+let ghostFrameIdx = 0;
+
+function startGhostOverlay() {
+  stopGhostOverlay();
+  const canvas = document.getElementById('overlayCanvas');
+  if (!canvas || !state.referenceLandmarks || state.referenceLandmarks.length === 0) return;
+  const ctx = canvas.getContext('2d');
+  
+  const resizeCanvas = () => {
+    const container = canvas.parentElement;
+    if (container) {
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+    }
+  };
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  ghostFrameIdx = 0;
+  ghostIntervalId = setInterval(() => {
+    if (!state.cameraStream) {
+      stopGhostOverlay();
+      return;
+    }
+    const points = state.referenceLandmarks[ghostFrameIdx];
+    if (points) {
+      drawGhostHand(ctx, canvas.width, canvas.height, points);
+    }
+    ghostFrameIdx = (ghostFrameIdx + 1) % state.referenceLandmarks.length;
+  }, 80);
+}
+
+function stopGhostOverlay() {
+  if (ghostIntervalId) {
+    clearInterval(ghostIntervalId);
+    ghostIntervalId = null;
+  }
+  const canvas = document.getElementById('overlayCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawGhostHand(ctx, width, height, points) {
+  if (!points || points.length < 21) return;
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.strokeStyle = 'rgba(166, 240, 198, 0.45)'; // Semi-transparent lime
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  const paths = [
+    [0, 1, 2, 3, 4],       // Thumb
+    [0, 5, 6, 7, 8],       // Index
+    [9, 10, 11, 12],       // Middle
+    [13, 14, 15, 16],      // Ring
+    [0, 17, 18, 19, 20],   // Pinky
+    [5, 9, 13, 17]         // Knuckles
+  ];
+
+  paths.forEach(p => {
+    ctx.beginPath();
+    p.forEach((idx, i) => {
+      const x = points[idx].x * width;
+      const y = points[idx].y * height;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = 'rgba(217, 240, 110, 0.65)'; // lime-yellow
+  points.forEach(pt => {
+    ctx.beginPath();
+    ctx.arc(pt.x * width, pt.y * height, 5, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
+
 async function startCamera(){
   const video=document.querySelector('#camera'), empty=document.querySelector('#cameraEmpty'), btn=document.querySelector('#cameraToggle');
   if(!navigator.mediaDevices?.getUserMedia){toast('Camera requires localhost or HTTPS.');return false;}
-  try{state.cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});video.srcObject=state.cameraStream;empty.style.display='none';btn.textContent=I18n.t('Turn off camera');return true;}
+  try{
+    state.cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
+    video.srcObject=state.cameraStream;
+    empty.style.display='none';
+    btn.textContent=I18n.t('Turn off camera');
+    startGhostOverlay();
+    return true;
+  }
   catch{toast('Camera access was blocked. Allow it in browser settings.');return false;}
 }
 async function toggleCamera(){ const video=document.querySelector('#camera'), empty=document.querySelector('#cameraEmpty'), btn=document.querySelector('#cameraToggle'); if(state.cameraStream){stopCamera();video.srcObject=null;empty.style.display='grid';btn.textContent=I18n.t('Turn on camera');return false;} const ok=await startCamera();if(ok)toast('Camera is ready.');return ok; }
 function stopCamera(){
   clearInterval(state.timerId); clearInterval(state.landmarkTimer);clearTimeout(state.autoStopTimer);state.autoStopTimer=null;
+  stopGhostOverlay();
   if(state.recorder?.state==='recording') { state.recorder.onstop=null; state.recorder.stop(); }
   state.recorder=null;
   if(state.cameraStream){state.cameraStream.getTracks().forEach(t=>t.stop());state.cameraStream=null;}
@@ -490,6 +723,62 @@ function bind(){
   document.querySelector('#recordToggle')?.addEventListener('click',()=>state.recorder?.state==='recording'?stopRecording():startRecording());
   document.querySelector('#copyTranslation')?.addEventListener('click',async()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text){try{await copyText(text);toast('Translation copied.');}catch(error){toast(error.message);}}});
   document.querySelector('#speakTranslation')?.addEventListener('click',()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text)speakText(text);});
+
+  // Social Event Handlers
+  document.querySelector('#addFriendSubmitBtn')?.addEventListener('click', async () => {
+    const input = document.querySelector('#addFriendUsernameInput');
+    const msg = document.querySelector('#addFriendStatusMsg');
+    if (!input || !input.value.trim()) return;
+    const username = input.value.trim();
+    if (msg) { msg.style.display = 'none'; msg.style.color = ''; }
+    try {
+      const res = await Api.sendFriendRequest(username);
+      input.value = '';
+      toast(res.message || 'Friend request sent!');
+      hydrateSocialPanel();
+    } catch (e) {
+      if (msg) {
+        msg.textContent = e.payload?.error || e.message || 'Failed to send request.';
+        msg.style.display = 'block';
+        msg.style.color = '#ef4444';
+      }
+    }
+  });
+
+  document.getElementById('friendsList')?.closest('.social-grid')?.addEventListener('click', async (e) => {
+    const acceptBtn = e.target.closest('.accept-friend-btn');
+    const rejectBtn = e.target.closest('.reject-friend-btn');
+    const addSuggestedBtn = e.target.closest('.add-suggested-btn');
+
+    if (acceptBtn) {
+      const id = parseInt(acceptBtn.dataset.id, 10);
+      try {
+        await Api.respondToFriendRequest(id, 'accept');
+        toast('Friend request accepted!');
+        hydrateSocialPanel();
+      } catch (err) {
+        toast(err.message || 'Failed to accept.');
+      }
+    } else if (rejectBtn) {
+      const id = parseInt(rejectBtn.dataset.id, 10);
+      try {
+        await Api.respondToFriendRequest(id, 'reject');
+        toast('Friend request declined.');
+        hydrateSocialPanel();
+      } catch (err) {
+        toast(err.message || 'Failed to decline.');
+      }
+    } else if (addSuggestedBtn) {
+      const id = parseInt(addSuggestedBtn.dataset.id, 10);
+      try {
+        await Api.sendFriendRequest(id);
+        toast('Friend request sent!');
+        hydrateSocialPanel();
+      } catch (err) {
+        toast(err.message || 'Failed to send request.');
+      }
+    }
+  });
 }
 
 window.addEventListener('hashchange',()=>{const route=routeFromHash();if(route!==state.route){state.route=route;render();}});

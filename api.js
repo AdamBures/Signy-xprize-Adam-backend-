@@ -130,5 +130,18 @@ export const Api = {
       method: 'POST', body: { price_code: 'family_monthly' },
       fallback: { url: null }
     });
+  },
+  async getFriends() {
+    return request('/friends/', { fallback: { friends: [], requests: [], suggestions: [] } });
+  },
+  async sendFriendRequest(usernameOrId) {
+    const payload = typeof usernameOrId === 'number' ? { to_user_id: usernameOrId } : { username: usernameOrId };
+    return request('/friends/request/', { method: 'POST', body: payload, fallback: { status: 'pending' } });
+  },
+  async respondToFriendRequest(friendshipId, action) {
+    return request('/friends/respond/', { method: 'POST', body: { friendship_id: friendshipId, action }, fallback: { message: 'Friend request updated.' } });
+  },
+  async lessonDetail(id) {
+    return request(`/lessons/${id}/`, { fallback: { reference_landmarks: [] } });
   }
 };

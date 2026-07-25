@@ -48,7 +48,8 @@ async function fetchLessonsFromApi() {
         emoji: EMOJI_MAP[w.name] || (w.name.startsWith('Letter') ? '🔤' : '🤟'),
         level: w.level || (w.is_premium ? 'Essential' : 'Beginner'),
         time: w.time || '4 min',
-        score: w.score || 'New'
+        score: w.score || 'New',
+        video_url: w.video_url || ''
       }));
       const grid = document.querySelector('#libraryGrid');
       if (grid) {
@@ -222,7 +223,7 @@ function profilePage(){
   `,'Profile & settings','Manage your user account, security and custom avatar.');
 }
 
-function practice(){ const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library'; return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div><div class="tips"><span>💡</span><span><strong>Quick tip</strong><br>Face your palm forward and make the motion gently, not too fast.</span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign">Check my sign</button></div></aside></main>`);}
+function practice(){ const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library'; return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn" style="display:inline-flex;align-items:center;gap:8px;margin:10px auto;padding:10px 16px;font-size:14px;border-radius:99px;background:var(--paper);border:1px solid var(--line);cursor:pointer;font-weight:700;color:var(--ink);transition:all .2s ease;"><span>📺</span> Watch Video Example</button>` : ''}<div class="tips"><span>💡</span><span><strong>Quick tip</strong><br>Face your palm forward and make the motion gently, not too fast.</span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign">Check my sign</button></div></aside></main>`);}
 
 function translatePage(){const back=state.returnRoute==='home'?'home':'dashboard';return immersiveShell(`<main class="practice translate-page"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">🤟</div><h2>Your signing space</h2><p>Turn on the camera, then press “Start signing”. Use natural pauses between phrases.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="recordingPill"><i class="live-dot"></i> Ready to translate</span>${preferenceControls()}</div></header><div class="tracking-box"></div><div class="record-timer" id="recordTimer">00:00</div></div></section><aside class="practice-side translator-side"><span class="eyebrow">Free translation · ASL → English</span><h1>Sign freely</h1><p>Show a phrase of up to 20 seconds. HandSign sends the captured sequence to <code>POST /translate/</code> and returns plain text.</p><div class="translation-result empty" id="translationResult"><span>Translation will appear here</span><strong>...</strong></div><div class="translation-tools"><button class="tool-button" id="copyTranslation" disabled>Copy text</button><button class="tool-button" id="speakTranslation" disabled>Read aloud</button></div><div class="privacy-note">🔒 <span>Camera data is used only for this translation. In demo mode, no clip leaves your browser.</span></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-lime" id="recordToggle">Start signing</button></div></aside></main>`);}
 
@@ -232,6 +233,10 @@ function modal(type){
     accessibility:['Accessibility','Keyboard navigation, visible focus states and readable contrast are included. Add signed video alternatives with your lesson content.'],
     support:['We’re here to help','If the camera is not working, check browser permissions first. Account and billing support can be connected to your support desk before public launch.']
   };
+  if(type==='video'){
+    const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
+    return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(560px,100%);"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign · Video Tutorial</span><h2 id="modalTitle">${escapeHtml(l.name)}</h2><div class="lesson-video-container"><video src="${l.video_url}" autoplay loop controls playsinline style="width:100%;aspect-ratio:16/9;border-radius:16px;background:#000;border:1px solid var(--line);object-fit:cover;margin:15px 0;"></video></div><button class="btn btn-dark" data-close>I'm Ready / Start Lesson</button></section></div>`;
+  }
   if(type==='profile')return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign</span><h2 id="modalTitle">Edit profile</h2><p>Keep your learning profile up to date.</p><form class="form" id="profileForm"><label class="field">Your name<input name="name" required value="${escapeHtml(state.user.name)}"></label><label class="field">Email address<input name="email" required type="email" value="${escapeHtml(state.user.email)}"></label><button class="btn btn-dark" type="submit">Save changes</button></form></section></div>`;
   if(info[type]) return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign</span><h2 id="modalTitle">${info[type][0]}</h2><p>${info[type][1]}</p><button class="btn btn-dark" data-close>Got it</button></section></div>`;
   return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">Welcome to HandSign</span><h2 id="modalTitle">${type==='login'?'Good to see you again.':'Let’s learn your first sign.'}</h2><p>${type==='login'?'Continue right where you left off.':'Create your free account — no credit card needed.'}</p><form class="form" id="authForm" data-auth-type="${type}">${type==='login'?'':`<label class="field">Your name<input name="name" required placeholder="Alex"></label>`}<label class="field">Email address<input name="email" required type="email" placeholder="you@example.com"></label><label class="field">Password<input name="password" required type="password" minlength="6" placeholder="At least 6 characters"></label><button class="btn btn-dark" type="submit">${type==='login'?'Log in':'Create free account'} →</button></form></section></div>`;
@@ -245,6 +250,12 @@ function render(){
   fetchLessonsFromApi();
   if(state.route==='dashboard') hydrateDashboard();
   if(state.route==='progress') hydrateProgressPage();
+  if(state.route==='practice'){
+    const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
+    if(l&&l.video_url){
+      setTimeout(()=>showModal('video'),150);
+    }
+  }
 }
 async function hydrateDashboard(){
   try {
@@ -298,7 +309,7 @@ async function hydrateProgressPage(){
   }
 }
 function go(route){ if(!APP_ROUTES.has(route)) route='home';if(['translate','practice'].includes(route)&&!['translate','practice'].includes(state.route))state.returnRoute=state.route;const hash=`#/${route}`; if(location.hash===hash){state.route=route;render();}else location.hash=hash; }
-function closeModal(){const m=document.querySelector('#modal');if(!m)return;m.remove();state.lastModalFocus?.focus?.();state.lastModalFocus=null;}
+function closeModal(){const m=document.querySelector('#modal');if(!m)return;const v=m.querySelector('video');if(v)v.pause();m.remove();state.lastModalFocus?.focus?.();state.lastModalFocus=null;}
 function showModal(type){ state.lastModalFocus=document.activeElement;document.querySelector('#modal')?.remove(); document.body.insertAdjacentHTML('beforeend',modal(type)); I18n.apply(document.querySelector('#modal')); bindModal();requestAnimationFrame(()=>document.querySelector('#modal input, #modal [data-close]')?.focus()); }
 function bindModal(){
   const m=document.querySelector('#modal');
@@ -473,6 +484,7 @@ function bind(){
   document.querySelectorAll('[data-language-toggle]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();toggleLanguageMenu(el);}));
   document.querySelectorAll('[data-language-option]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();changeLanguage(el.dataset.languageOption);}));
   document.querySelectorAll('[data-language-option]').forEach(el=>el.addEventListener('keydown',e=>{const options=[...el.closest('.language-menu').querySelectorAll('[data-language-option]')];const index=options.indexOf(el);if(['ArrowDown','ArrowRight'].includes(e.key)){e.preventDefault();options[(index+1)%options.length].focus();}if(['ArrowUp','ArrowLeft'].includes(e.key)){e.preventDefault();options[(index-1+options.length)%options.length].focus();}if(e.key==='Home'){e.preventDefault();options[0].focus();}if(e.key==='End'){e.preventDefault();options.at(-1).focus();}}));
+  document.querySelector('#openVideoBtn')?.addEventListener('click',()=>showModal('video'));
   document.querySelector('#cameraToggle')?.addEventListener('click',toggleCamera);
   document.querySelector('#checkSign')?.addEventListener('click',evaluateSign);
   document.querySelector('#recordToggle')?.addEventListener('click',()=>state.recorder?.state==='recording'?stopRecording():startRecording());

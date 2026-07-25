@@ -44,6 +44,7 @@ class WordListView(generics.ListAPIView):
                 'slug': w.slug,
                 'category_name': w.category.name if w.category else 'General',
                 'description': w.description,
+                'video_url': w.video_url,
                 'is_premium': w.is_premium,
                 'level': 'Essential' if w.is_premium else 'Beginner',
                 'time': '4 min',

@@ -1,3 +1,4 @@
+import os
 from django.contrib import admin
 from django.urls import path, include
 from django.views.static import serve
@@ -16,6 +17,7 @@ urlpatterns = [
     path('app.js', serve, {'document_root': settings.BASE_DIR, 'path': 'app.js'}),
     path('api.js', serve, {'document_root': settings.BASE_DIR, 'path': 'api.js'}),
     path('i18n.js', serve, {'document_root': settings.BASE_DIR, 'path': 'i18n.js'}),
+    path('raw_videos/<path:path>', serve, {'document_root': os.path.join(settings.BASE_DIR, 'raw_videos')}),
 
     # Admin portal
     path('admin/', admin.site.urls),

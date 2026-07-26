@@ -20,6 +20,24 @@ class Word(models.Model):
     description = models.TextField(blank=True, default='')
     video_url = models.URLField(blank=True, default='')
     is_premium = models.BooleanField(default=False)
+    requires_face = models.BooleanField(
+        default=False,
+        help_text="Whether non-manual facial markers are part of this sign",
+    )
+    required_hands = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Number of hands required for the sign (1 or 2)",
+    )
+    guidance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Optional learner guidance: tip, placement and movement",
+    )
+    reference_face_metrics = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Expected normalized facial metrics for non-manual markers",
+    )
     # reference_landmarks stores an array of frames, each frame being an array of 21 landmark dicts/lists {"x": ..., "y": ..., "z": ...}
     reference_landmarks = models.JSONField(default=list, help_text="List of landmark frames for reference comparison")
     unlock_requirement = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='unlocks')

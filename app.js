@@ -508,6 +508,24 @@ function profilePage(){
         <div class="button-row">
           <button class="btn text-button" data-logout>Sign out</button>
         </div>
+        <div class="profile-learning">
+          <div class="profile-learning-head">
+            <div>
+              <span class="eyebrow">Learning overview</span>
+              <h3>Your ASL journey</h3>
+            </div>
+            <button class="btn btn-ghost small-btn" data-route="progress">Full progress</button>
+          </div>
+          <div class="profile-stat-grid">
+            <div><strong id="profileSignsLearned">0</strong><span>Signs learned</span></div>
+            <div><strong id="profileAccuracy">0%</strong><span>Average accuracy</span></div>
+            <div><strong id="profilePracticeTime">0m</strong><span>Practice time</span></div>
+          </div>
+          <div class="profile-recent">
+            <strong>Recent signs</strong>
+            <div id="profileRecentSigns"><span class="muted">Complete a lesson to see it here.</span></div>
+          </div>
+        </div>
       </section>
 
       <section class="settings-card">
@@ -582,7 +600,14 @@ function profilePage(){
   `,'Profile & settings','Manage your user account, security and custom avatar.');
 }
 
-function practice(){ const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library'; return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><canvas id="overlayCanvas" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); pointer-events:none; z-index:10;"></canvas><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn" style="display:inline-flex;align-items:center;gap:8px;margin:10px auto;padding:10px 16px;font-size:14px;border-radius:99px;background:var(--paper);border:1px solid var(--line);cursor:pointer;font-weight:700;color:var(--ink);transition:all .2s ease;"><span>📺</span> Watch Video Example</button>` : ''}<div class="tips"><span>💡</span><span><strong>Quick tip</strong><br>Face your palm forward and make the motion gently, not too fast.</span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign">Check my sign</button></div></aside></main>`);}
+function practice(){
+  const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library';
+  const rawTip=l.guidance?.tip||l.description||'Keep your hand relaxed and clearly visible.';
+  const tip=escapeHtml(I18n.lessonTip(l.name,rawTip));
+  const genericPosition=l.required_hands===2?'Keep both hands visible inside the guide.':'Keep your signing hand visible inside the guide.';
+  const handInstruction=escapeHtml(I18n.lessonPosition(l.name,genericPosition));
+  const movementInstruction=escapeHtml(I18n.lessonMovement(l.name,'Follow the animated skeleton from start to finish, then lower your hands.'));
+  return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><canvas id="overlayCanvas" class="guide-canvas ${state.helpEnabled?'visible':''}" aria-hidden="true"></canvas><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="trackingStatus"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"><span class="hand-count-guide" id="handCountGuide">${l.required_hands===2?'2 hands':'1 hand'}</span></div><div class="capture-banner" id="captureBanner">Show the complete sign — it will be captured automatically</div><div class="camera-help"><label class="help-toggle"><input type="checkbox" id="helpToggle" ${state.helpEnabled?'checked':''}><span>✨ ${I18n.t('Help')}</span></label><small id="helpHint">Shows shape, position and movement</small></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn"><span>📺</span> Watch Video Example</button>` : ''}<div class="coaching-steps"><div><b>1</b><span><strong>Hand shape</strong><small id="lessonTip">${tip}</small></span></div><div><b>2</b><span><strong>Position</strong><small>${handInstruction}</small></span></div><div><b>3</b><span><strong>Movement</strong><small>${movementInstruction}</small></span></div></div><div class="face-requirement" id="faceRequirement" ${l.requires_face?'':'hidden'}>🙂 This sign also uses facial expression. Keep your full face visible.</div><div class="attempt-state" id="attemptState"><i></i><span><strong>Waiting for your sign</strong><small>The check button will unlock when the movement is captured.</small></span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign" disabled>Check my sign</button></div></aside></main>`);}
 
 function translatePage(){const back=state.returnRoute==='home'?'home':'dashboard';return immersiveShell(`<main class="practice translate-page"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">🤟</div><h2>Your signing space</h2><p>Turn on the camera, then press “Start signing”. Use natural pauses between phrases.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="recordingPill"><i class="live-dot"></i> Ready to translate</span>${preferenceControls()}</div></header><div class="tracking-box"></div><div class="record-timer" id="recordTimer">00:00</div></div></section><aside class="practice-side translator-side"><span class="eyebrow">Free translation · ASL → English</span><h1>Sign freely</h1><p>Show a phrase of up to 20 seconds. HandSign sends the captured sequence to <code>POST /translate/</code> and returns plain text.</p><div class="translation-result empty" id="translationResult"><span>Translation will appear here</span><strong>...</strong></div><div class="translation-tools"><button class="tool-button" id="copyTranslation" disabled>Copy text</button><button class="tool-button" id="speakTranslation" disabled>Read aloud</button></div><div class="privacy-note">🔒 <span>Camera data is used only for this translation. In demo mode, no clip leaves your browser.</span></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-lime" id="recordToggle">Start signing</button></div></aside></main>`);}
 
@@ -866,10 +891,25 @@ async function updateGlobalStreak() {
 
 async function loadLessonReference(id) {
   state.referenceLandmarks = [];
+  state.requiresFace = false;
+  state.requiredHands = 1;
   if (!id) return;
   try {
     const detail = await Api.lessonDetail(id);
     state.referenceLandmarks = detail.reference_landmarks || [];
+    state.requiresFace = Boolean(detail.requires_face);
+    state.requiredHands = detail.required_hands === 2 ? 2 : 1;
+    window.HandSignLandmarkProvider?.setFaceEnabled?.(state.requiresFace);
+    const faceNote = document.querySelector('#faceRequirement');
+    if (faceNote) faceNote.hidden = !state.requiresFace;
+    const tip = document.querySelector('#lessonTip');
+    if (tip && (detail.guidance?.tip || detail.description)) {
+      tip.textContent = I18n.lessonTip(
+        detail.name || state.lesson,
+        detail.guidance?.tip || detail.description,
+      );
+    }
+    if (state.helpEnabled && state.cameraStream) startGhostOverlay();
   } catch (e) {
     console.info('Ghost overlay loader info:', e);
   }
@@ -1291,22 +1331,26 @@ function toast(msg){ const el=document.querySelector('#toast'); el.textContent=I
 
 let ghostIntervalId = null;
 let ghostFrameIdx = 0;
+let ghostResizeHandler = null;
 
 function startGhostOverlay() {
   stopGhostOverlay();
   const canvas = document.getElementById('overlayCanvas');
-  if (!canvas || !state.referenceLandmarks || state.referenceLandmarks.length === 0) return;
+  if (!state.helpEnabled || !canvas || !state.referenceLandmarks?.length) return;
   const ctx = canvas.getContext('2d');
   
-  const resizeCanvas = () => {
+  ghostResizeHandler = () => {
     const container = canvas.parentElement;
     if (container) {
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(container.clientWidth * ratio);
+      canvas.height = Math.round(container.clientHeight * ratio);
+      canvas.style.width = `${container.clientWidth}px`;
+      canvas.style.height = `${container.clientHeight}px`;
     }
   };
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+  ghostResizeHandler();
+  window.addEventListener('resize', ghostResizeHandler);
 
   ghostFrameIdx = 0;
   ghostIntervalId = setInterval(() => {
@@ -1316,7 +1360,8 @@ function startGhostOverlay() {
     }
     const points = state.referenceLandmarks[ghostFrameIdx];
     if (points) {
-      drawGhostHand(ctx, canvas.width, canvas.height, points);
+      const next = state.referenceLandmarks[(ghostFrameIdx + 2) % state.referenceLandmarks.length];
+      drawGhostHand(ctx, canvas.width, canvas.height, points, next);
     }
     ghostFrameIdx = (ghostFrameIdx + 1) % state.referenceLandmarks.length;
   }, 80);
@@ -1327,6 +1372,10 @@ function stopGhostOverlay() {
     clearInterval(ghostIntervalId);
     ghostIntervalId = null;
   }
+  if (ghostResizeHandler) {
+    window.removeEventListener('resize', ghostResizeHandler);
+    ghostResizeHandler = null;
+  }
   const canvas = document.getElementById('overlayCanvas');
   if (canvas) {
     const ctx = canvas.getContext('2d');
@@ -1334,9 +1383,23 @@ function stopGhostOverlay() {
   }
 }
 
-function drawGhostHand(ctx, width, height, points) {
+function fitHandToGuide(points, width, height) {
+  const xs=points.map(point=>Number(point.x)||0),ys=points.map(point=>Number(point.y)||0);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const sourceWidth=Math.max(maxX-minX,0.001),sourceHeight=Math.max(maxY-minY,0.001);
+  const targetSize=Math.min(width,height)*0.42;
+  const scale=Math.min(targetSize/sourceWidth,targetSize/sourceHeight);
+  const centerX=width*0.5,centerY=height*0.52;
+  return points.map(point=>({
+    x:centerX+((Number(point.x)||0)-(minX+maxX)/2)*scale,
+    y:centerY+((Number(point.y)||0)-(minY+maxY)/2)*scale,
+  }));
+}
+
+function drawGhostHand(ctx, width, height, points, nextPoints) {
   if (!points || points.length < 21) return;
   ctx.clearRect(0, 0, width, height);
+  const fitted=fitHandToGuide(points,width,height);
 
   ctx.strokeStyle = 'rgba(166, 240, 198, 0.45)'; // Semi-transparent lime
   ctx.lineWidth = 4;
@@ -1352,23 +1415,43 @@ function drawGhostHand(ctx, width, height, points) {
     [5, 9, 13, 17]         // Knuckles
   ];
 
-  paths.forEach(p => {
-    ctx.beginPath();
-    p.forEach((idx, i) => {
-      const x = points[idx].x * width;
-      const y = points[idx].y * height;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+  const handCount=Math.min(2,Math.floor(fitted.length/21));
+  for(let handIndex=0;handIndex<handCount;handIndex+=1){
+    paths.forEach(p => {
+      ctx.beginPath();
+      p.forEach((localIndex, i) => {
+        const {x,y}=fitted[(handIndex*21)+localIndex];
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
     });
-    ctx.stroke();
-  });
+  }
 
   ctx.fillStyle = 'rgba(217, 240, 110, 0.65)'; // lime-yellow
-  points.forEach(pt => {
+  fitted.forEach(pt => {
     ctx.beginPath();
-    ctx.arc(pt.x * width, pt.y * height, 5, 0, 2 * Math.PI);
+    ctx.arc(pt.x, pt.y, Math.max(4,width/220), 0, 2 * Math.PI);
     ctx.fill();
   });
+
+  if(nextPoints?.length>=21){
+    const next=fitHandToGuide(nextPoints,width,height);
+    const center=values=>values.reduce((result,point)=>({x:result.x+point.x/values.length,y:result.y+point.y/values.length}),{x:0,y:0});
+    const from=center(fitted),to=center(next);
+    const dx=to.x-from.x,dy=to.y-from.y;
+    if(Math.hypot(dx,dy)>3){
+      ctx.strokeStyle='rgba(217, 240, 110, .9)';
+      ctx.fillStyle='rgba(217, 240, 110, .9)';
+      ctx.lineWidth=Math.max(3,width/300);
+      ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);ctx.stroke();
+      const angle=Math.atan2(dy,dx),head=Math.max(10,width/100);
+      ctx.beginPath();ctx.moveTo(to.x,to.y);
+      ctx.lineTo(to.x-head*Math.cos(angle-.5),to.y-head*Math.sin(angle-.5));
+      ctx.lineTo(to.x-head*Math.cos(angle+.5),to.y-head*Math.sin(angle+.5));
+      ctx.closePath();ctx.fill();
+    }
+  }
 }
 
 async function startCamera(){
@@ -1377,23 +1460,38 @@ async function startCamera(){
   try{
     state.cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
     video.srcObject=state.cameraStream;
+    await video.play();
     empty.style.display='none';
     btn.textContent=I18n.t('Turn off camera');
-    startGhostOverlay();
+    await window.HandSignLandmarkProvider?.start?.(video,{
+      face:state.route==='translate'||state.requiresFace,
+      hands:state.route==='translate'?2:state.requiredHands,
+    });
+    if(state.helpEnabled) startGhostOverlay();
     return true;
   }
   catch{toast('Camera access was blocked. Allow it in browser settings.');return false;}
 }
-async function toggleCamera(){ const video=document.querySelector('#camera'), empty=document.querySelector('#cameraEmpty'), btn=document.querySelector('#cameraToggle'); if(state.cameraStream){stopCamera();video.srcObject=null;empty.style.display='grid';btn.textContent=I18n.t('Turn on camera');return false;} const ok=await startCamera();if(ok)toast('Camera is ready.');return ok; }
+async function toggleCamera(){
+  const video=document.querySelector('#camera'),empty=document.querySelector('#cameraEmpty'),btn=document.querySelector('#cameraToggle');
+  if(state.cameraStream){
+    stopCamera();video.srcObject=null;empty.style.display='grid';btn.textContent=I18n.t('Turn on camera');
+    const check=document.querySelector('#checkSign');if(check)check.disabled=true;
+    return false;
+  }
+  const ok=await startCamera();if(ok)toast('Camera is ready.');return ok;
+}
 function stopCamera(){
   clearInterval(state.timerId); clearInterval(state.landmarkTimer);clearTimeout(state.autoStopTimer);state.autoStopTimer=null;
   stopGhostOverlay();
+  window.HandSignLandmarkProvider?.stop?.();
   if(state.recorder?.state==='recording') { state.recorder.onstop=null; state.recorder.stop(); }
   state.recorder=null;
   if(state.cameraStream){state.cameraStream.getTracks().forEach(t=>t.stop());state.cameraStream=null;}
 }
 
 function setFeedback(box,heading,message=''){
+  box.classList.add('has-content');
   box.replaceChildren();const strong=document.createElement('strong');strong.textContent=heading;box.append(strong);
   if(message){box.append(document.createElement('br'),document.createTextNode(message));}
 }
@@ -1404,7 +1502,7 @@ function setTranslationResult(box,label,text){
 async function evaluateSign(){
   const box=document.querySelector('#feedback'), btn=document.querySelector('#checkSign');
   if(!state.cameraStream){const ready=await startCamera();if(ready)toast('Camera is ready. Show the sign, then check it again.');return;}
-  btn.disabled=true;btn.textContent=I18n.t('Analyzing…');box.style.display='block';setFeedback(box,I18n.t('Looking at your movement…'));
+  btn.disabled=true;btn.textContent=I18n.t('Analyzing…');setFeedback(box,I18n.t('Looking at your movement…'));
   const landmarks=window.HandSignLandmarkProvider?.getSequence?.() || [];
   try{
     const result=await Api.evaluateSign({lesson:state.lesson,landmarks,language:I18n.current});
@@ -1423,7 +1521,22 @@ async function evaluateSign(){
     }
   }
   catch(error){setFeedback(box,I18n.t('Could not analyze'),error.message);}
-  finally{btn.disabled=false;btn.textContent=I18n.t('Check my sign');}
+  finally{
+    window.HandSignLandmarkProvider?.reset?.();
+    btn.disabled=true;
+    btn.textContent=I18n.t('Check my sign');
+    const attempt=document.querySelector('#attemptState');
+    if(attempt){
+      attempt.classList.remove('ready');
+      attempt.querySelector('strong').textContent=I18n.t('Waiting for your sign');
+      attempt.querySelector('small').textContent=I18n.t('Show the sign again to unlock another check.');
+    }
+    const banner=document.querySelector('#captureBanner');
+    if(banner){
+      banner.classList.remove('ready');
+      banner.textContent=I18n.t('Show the complete sign — it will be captured automatically');
+    }
+  }
 }
 
 async function startRecording(){
@@ -1624,6 +1737,14 @@ function bind(){
   document.querySelector('#openVideoBtn')?.addEventListener('click',()=>showModal('video'));
   document.querySelector('#cameraToggle')?.addEventListener('click',toggleCamera);
   document.querySelector('#checkSign')?.addEventListener('click',evaluateSign);
+  document.querySelector('#helpToggle')?.addEventListener('change',event=>{
+    state.helpEnabled=event.currentTarget.checked;
+    document.querySelector('#overlayCanvas')?.classList.toggle('visible',state.helpEnabled);
+    if(state.helpEnabled){
+      if(state.cameraStream) startGhostOverlay();
+      else toast('Turn on the camera to use visual help.');
+    }else stopGhostOverlay();
+  });
   document.querySelector('#recordToggle')?.addEventListener('click',()=>state.recorder?.state==='recording'?stopRecording():startRecording());
   document.querySelector('#copyTranslation')?.addEventListener('click',async()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text){try{await copyText(text);toast('Translation copied.');}catch(error){toast(error.message);}}});
   document.querySelector('#speakTranslation')?.addEventListener('click',()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text)speakText(text);});
@@ -1686,6 +1807,30 @@ function bind(){
 }
 
 window.addEventListener('hashchange',()=>{const route=routeFromHash();if(route!==state.route){state.route=route;render();}});
+window.addEventListener('handsign-tracking',event=>{
+  const status=document.querySelector('#trackingStatus');
+  if(!status||!state.cameraStream)return;
+  const count=Number(event.detail?.handCount||0),required=Number(event.detail?.requiredHands||1);
+  const enough=count>=required;
+  status.classList.toggle('tracking-ready',enough);
+  const label=enough
+    ? (required===2?'Both hands detected':'Hand detected')
+    : (required===2?`Show both hands (${count}/2)`:'Show your hand');
+  status.innerHTML=`<i class="${enough?'live-dot':'record-dot'}"></i> ${I18n.t(label)}`;
+});
+window.addEventListener('handsign-captured',()=>{
+  const button=document.querySelector('#checkSign'),attempt=document.querySelector('#attemptState'),banner=document.querySelector('#captureBanner');
+  if(button)button.disabled=false;
+  if(attempt){
+    attempt.classList.add('ready');
+    attempt.querySelector('strong').textContent=I18n.t('Sign captured');
+    attempt.querySelector('small').textContent=I18n.t('You can lower your hands and press Check my sign.');
+  }
+  if(banner){
+    banner.classList.add('ready');
+    banner.textContent=I18n.t('✓ Sign captured — you can lower your hands');
+  }
+});
 document.addEventListener('click',event=>{
   if(!event.target.closest('.language-switcher'))closeLanguageMenus();
   if(!event.target.closest('.nav'))closeMobileMenu();

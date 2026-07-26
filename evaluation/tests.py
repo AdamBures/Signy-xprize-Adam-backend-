@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from lessons.models import Category, Word
-from evaluation.evaluator import evaluate_landmarks
+from evaluation.evaluator import evaluate_face_metrics, evaluate_landmarks
 
 class EvaluationTests(TestCase):
     def setUp(self):
@@ -45,3 +45,32 @@ class EvaluationTests(TestCase):
         self.assertEqual(response.data['score'], 100.0)
         self.assertTrue(response.data['success'])
         self.assertIn('feedback', response.data)
+
+    def test_required_smile_changes_combined_score(self):
+        result = evaluate_landmarks(
+            [self.landmarks_frame],
+            [self.landmarks_frame],
+            face_metrics=[{'smile': 0.0}],
+            reference_face_metrics={'expression': 'smile'},
+        )
+        self.assertEqual(result['face_score'], 0.0)
+        self.assertEqual(result['score'], 80.0)
+        self.assertTrue(result['issues'])
+
+    def test_closed_eyes_marker(self):
+        result = evaluate_face_metrics(
+            [{'eye_open': 0.005}],
+            {'expression': 'eyes_closed'},
+        )
+        self.assertGreaterEqual(result['score'], 60)
+        self.assertEqual(result['issues'], [])
+
+    def test_two_hand_sequence_perfect_match(self):
+        second_hand = [
+            {**point, 'x': point['x'] + 1.5}
+            for point in self.landmarks_frame
+        ]
+        two_hands = self.landmarks_frame + second_hand
+        result = evaluate_landmarks([two_hands], [two_hands], language='ru')
+        self.assertEqual(result['score'], 100.0)
+        self.assertTrue(result['success'])

@@ -17,6 +17,7 @@ urlpatterns = [
     path('app.js', serve, {'document_root': settings.BASE_DIR, 'path': 'app.js'}),
     path('api.js', serve, {'document_root': settings.BASE_DIR, 'path': 'api.js'}),
     path('i18n.js', serve, {'document_root': settings.BASE_DIR, 'path': 'i18n.js'}),
+    path('tracker.js', serve, {'document_root': settings.BASE_DIR, 'path': 'tracker.js'}),
     path('raw_videos/<path:path>', serve, {'document_root': os.path.join(settings.BASE_DIR, 'raw_videos')}),
 
     # Admin portal

@@ -13,7 +13,8 @@ class WordSerializer(serializers.ModelSerializer):
         model = Word
         fields = [
             'id', 'category', 'category_name', 'name', 'slug',
-            'description', 'video_url', 'is_premium', 'reference_landmarks'
+            'description', 'video_url', 'is_premium', 'requires_face', 'required_hands',
+            'guidance', 'reference_face_metrics', 'reference_landmarks'
         ]
 
 class WordListSerializer(serializers.ModelSerializer):
@@ -22,7 +23,10 @@ class WordListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Word
         # Exclude heavy reference_landmarks from general list query for speed
-        fields = ['id', 'category', 'category_name', 'name', 'slug', 'description', 'video_url', 'is_premium']
+        fields = [
+            'id', 'category', 'category_name', 'name', 'slug', 'description',
+            'video_url', 'is_premium', 'requires_face', 'required_hands', 'guidance'
+        ]
 
 class UserProgressSerializer(serializers.ModelSerializer):
     word_name = serializers.ReadOnlyField(source='word.name')

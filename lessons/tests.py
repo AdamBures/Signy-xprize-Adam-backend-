@@ -43,3 +43,6 @@ class LessonsAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Mléko')
         self.assertIn('reference_landmarks', response.data)
+        self.assertIn('requires_face', response.data)
+        self.assertIn('required_hands', response.data)
+        self.assertIn('guidance', response.data)

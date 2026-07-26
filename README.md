@@ -2,7 +2,8 @@
 
 A robust Python/Django backend and an interactive Vanilla JS SPA frontend designed for teaching American Sign Language (ASL) and translating signs in real time. The application is specifically optimized to help parents of children with delayed speech development or autism.
 
----
+Create an administrator explicitly (the seed command never creates a default
+password):
 
 ## Core Features
 
@@ -30,7 +31,11 @@ A robust Python/Django backend and an interactive Vanilla JS SPA frontend design
 - **IntersectionObserver Infinite Scroll**: The client SPA leverages modern IntersectionObservers to deliver a flawless infinite scrolling experience across the entire app (Lesson Library, Leaderboards, Friend Lists).
 - **Backend Pagination**: The Django REST Framework (DRF) serves data in pages. The social panel uses an advanced asynchronous pagination strategy that independently paginates accepted friends (`friends_page`) and pending requests (`requests_page`) inside a single API call, entirely eliminating massive JSON payloads.
 
----
+```bash
+git status --short
+git diff --check
+python manage.py test
+```
 
 ## 💼 Business Model & Monetization
 

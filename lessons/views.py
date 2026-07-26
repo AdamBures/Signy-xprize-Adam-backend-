@@ -13,18 +13,22 @@ from .models import Category, Word, UserProgress
 from .serializers import CategorySerializer, WordSerializer, WordListSerializer, UserProgressSerializer
 
 class CategoryListView(generics.ListAPIView):
-    queryset = Category.objects.all()
+    def get_queryset(self):
+        return Category.objects.all()[:50]
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
 class WordListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
     def get(self, request):
-        words = Word.objects.all()
+        words = Word.objects.all().order_by('id')[:500]
         category_id = request.query_params.get('category')
         if category_id:
             words = words.filter(category_id=category_id)
+        
+        words_to_serialize = words
 
         # Get completed word IDs if user is authenticated
         completed_word_ids = set()
@@ -36,7 +40,7 @@ class WordListView(generics.ListAPIView):
                 user_scores[p.word_id] = round(p.best_score)
 
         results = []
-        for w in words:
+        for w in words_to_serialize:
             score_str = f"{user_scores[w.id]}%" if w.id in user_scores else 'New'
             results.append({
                 'id': w.id,
@@ -182,3 +186,36 @@ class UploadVideoWordView(APIView):
             'frame_count': len(landmarks_sequence),
             'word': WordSerializer(word).data
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+
+import random
+
+class PracticeQuizView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        words_qs = Word.objects.exclude(video_url='')[:500]
+        if len(words_qs) < 3:
+            return Response({'error': 'Nedostatek slov s videem v databázi pro sestavení kvízu.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        quiz_words = random.sample(list(words_qs), 3)
+        all_word_names = list(Word.objects.values_list('name', flat=True)[:500])
+
+        quiz_items = []
+        for w in quiz_words:
+            distractors = [name for name in all_word_names if name != w.name]
+            if len(distractors) >= 2:
+                choices = random.sample(distractors, 2)
+            else:
+                choices = ['Mother', 'Father']
+            choices.append(w.name)
+            random.shuffle(choices)
+
+            quiz_items.append({
+                'word_id': w.id,
+                'video_url': w.video_url,
+                'choices': choices,
+                'correct_answer': w.name
+            })
+
+        return Response({'quiz': quiz_items})

@@ -4,10 +4,16 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    has_premium = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_subscribed', 'first_name', 'last_name', 'avatar']
-        read_only_fields = ['id', 'is_subscribed']
+        fields = [
+            'id', 'username', 'email', 'is_subscribed', 'first_name', 'last_name', 'avatar',
+            'language_level', 'daily_goal_minutes', 'onboarding_completed', 'xp', 'coins',
+            'premium_expires_at', 'has_premium', 'country', 'pronouns', 'skin_tone'
+        ]
+        read_only_fields = ['id', 'is_subscribed', 'xp', 'coins', 'premium_expires_at', 'has_premium']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

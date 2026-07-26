@@ -1,0 +1,216 @@
+const dictionaries = {
+  ru: {
+    'How it works':'Как это работает','Lessons':'Уроки','Free translate':'Свободный перевод','Pricing':'Тарифы','Log in':'Войти','Start learning':'Начать обучение',
+    'AI-powered ASL learning':'Изучение ASL с помощью ИИ','Small signs.':'Маленькие жесты.','Big connections.':'Большая связь.','Learn practical American Sign Language with real-time, judgment-free feedback — built for the everyday moments that matter most.':'Изучайте практичный американский язык жестов с доброжелательной обратной связью в реальном времени — для важных повседневных моментов.',
+    'Start your first lesson':'Начать первый урок','See how it works':'Посмотреть, как это работает','Loved by early tester families':'Любимо семьями первых тестировщиков','Practice anytime. Learn at your pace.':'Занимайтесь когда удобно и в своём темпе.','Hand tracking':'Отслеживание рук','Accuracy':'Точность','Great form!':'Отличная форма!','LESSON 01':'УРОК 01','Designed to connect with':'Готово к интеграции с',
+    'Made for real life':'Создано для реальной жизни','From camera on to confident in three simple steps.':'От включения камеры до уверенного жеста — три простых шага.','No special equipment or prior experience. HandSign works right in your browser and meets you where you are.':'Без специального оборудования и опыта. HandSign работает прямо в браузере и подстраивается под ваш уровень.',
+    '01 — PICK':'01 — ВЫБЕРИТЕ','02 — PRACTICE':'02 — ПРАКТИКУЙТЕСЬ','03 — CONNECT':'03 — ОБЩАЙТЕСЬ','Choose a useful word':'Выберите полезное слово','Start with what your family needs today — from “more” and “milk” to feelings and routines.':'Начните с того, что нужно семье сегодня: от «ещё» и «молоко» до эмоций и ежедневных дел.','Sign to your camera':'Покажите жест в камеру','Our hand tracking follows your movement privately, directly in your browser, in real time.':'Движения рук отслеживаются конфиденциально и в реальном времени прямо в браузере.','Get kind, clear feedback':'Получите понятный совет','Receive specific coaching on hand shape, placement and motion — then celebrate your progress.':'Получите точный совет по форме, положению и движению руки — и увидьте свой прогресс.',
+    'Free sign translator':'Свободный перевод жестов','Show it. We’ll put it into words.':'Покажите — мы переведём в слова.','Turn on your camera, sign naturally, and get a text translation you can copy or hear aloud.':'Включите камеру, показывайте жесты естественно и получите текст, который можно скопировать или озвучить.','Open free translator':'Открыть переводчик',
+    'Explore lessons':'Откройте уроки','Start with words that open doors.':'Начните со слов, которые помогают общаться.','View all lessons':'Все уроки','A little win, a huge moment':'Маленькая победа, важный момент','“The first time Leo signed ‘more’ at dinner, we both understood each other without a meltdown. I cried happy tears.”':'«Когда Лео впервые показал “ещё” за ужином, мы поняли друг друга без слёз. Я плакала уже от счастья».','HandSign pilot family':'Семья пилотной программы HandSign',
+    'Your first lesson is free':'Первый урок бесплатно','A new way to understand each other starts here.':'Новый способ понимать друг друга начинается здесь.','Five minutes, one useful sign, and supportive feedback. No credit card required.':'Пять минут, один полезный жест и бережная обратная связь. Карта не нужна.','Try HandSign free':'Попробовать HandSign бесплатно','Built with care for every communicator.':'Создано с заботой о каждом, кто хочет общаться.','Privacy':'Конфиденциальность','Accessibility':'Доступность','Support':'Поддержка',
+    'Home':'Главная','Translate':'Перевод','Progress':'Прогресс','Profile':'Профиль','Practice one lesson today to keep it going.':'Пройдите сегодня один урок, чтобы сохранить серию.','day streak':'дней подряд','Good morning, Alex 👋':'Доброе утро, Алекс 👋','Ready for one small step forward?':'Готовы сделать ещё один небольшой шаг?','Continue learning':'Продолжить обучение','Everyday essentials':'Необходимое на каждый день','Lesson 3 of 8 · You\'re learning words that make daily routines easier.':'Урок 3 из 8 · Вы изучаете слова, которые упрощают ежедневное общение.','Continue lesson':'Продолжить урок','Weekly goal':'Недельная цель','Two more days to reach your goal':'Ещё два дня до вашей цели','Recommended for you':'Рекомендуем вам','See all':'Смотреть все',
+    'Lesson library':'Библиотека уроков','Practical signs, organized into small and friendly lessons.':'Практичные жесты в коротких и понятных уроках.','All lessons':'Все уроки','Beginner':'Начальный','Essential':'Необходимое','Everyday':'Повседневное','Connection':'Общение','New':'Новый','Hello':'Привет','Thank you':'Спасибо','More':'Ещё','Milk':'Молоко','Help':'Помощь','Water':'Вода','Family':'Семья','I love you':'Я люблю тебя',
+    'Your progress':'Ваш прогресс','Every practice session is a meaningful step.':'Каждая тренировка — важный шаг.','Signs learned':'Изучено жестов','this week':'на этой неделе','Average accuracy':'Средняя точность','this month':'в этом месяце','Practice time':'Время занятий','Across 9 sessions':'За 9 занятий','Your week':'Ваша неделя','Goal: 5 minutes a day':'Цель: 5 минут в день',
+    'Profile & settings':'Профиль и настройки','Manage your account and backend connection.':'Управляйте аккаунтом и подключением backend.','Learning ASL':'Изучает ASL','Edit profile':'Изменить профиль','Backend connection':'Подключение backend','API settings':'Настройки API','Set the Django API base once. It is stored only in this browser.':'Укажите адрес Django API. Он сохранится только в этом браузере.','API base URL':'Базовый URL API','Save & test':'Сохранить и проверить','Not tested':'Не проверено','Plan':'Тариф','Free explorer':'Бесплатный','Four starter lessons and free translator previews.':'Четыре начальных урока и пробный свободный перевод.','Upgrade to Family':'Перейти на Family',
+    'Guided lesson · Beginner':'Урок с подсказками · Начальный','Ready when you are':'Начните, когда будете готовы','Turn on your camera and place your upper body inside the guide.':'Включите камеру и расположите верхнюю часть тела внутри рамки.','Private on-device tracking':'Приватное отслеживание на устройстве','Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.':'Посмотрите пример и повторите движение зеркально. Расслабьте руку и держите её в кадре.','Quick tip':'Подсказка','Face your palm forward and make the motion gently, not too fast.':'Поверните ладонь вперёд и двигайтесь плавно, не слишком быстро.','Turn on camera':'Включить камеру','Turn off camera':'Выключить камеру','Check my sign':'Проверить жест','Analyzing…':'Анализируем…','Looking at your movement…':'Изучаем ваше движение…','Could not analyze':'Не удалось проанализировать','match':'совпадение','Demo':'Демо',
+    'Your signing space':'Пространство для жестов','Turn on the camera, then press “Start signing”. Use natural pauses between phrases.':'Включите камеру, нажмите «Начать показывать» и делайте естественные паузы между фразами.','Ready to translate':'Готово к переводу','Free translation · ASL → English':'Свободный перевод · ASL → Русский','Sign freely':'Показывайте свободно','Show a phrase of up to 20 seconds. HandSign sends the captured sequence to':'Покажите фразу длительностью до 20 секунд. HandSign отправит записанную последовательность на','and returns plain text.':'и вернёт обычный текст.','Translation will appear here':'Здесь появится перевод','Copy text':'Скопировать','Read aloud':'Озвучить','Camera data is used only for this translation. In demo mode, no clip leaves your browser.':'Данные камеры используются только для этого перевода. В демо-режиме запись не покидает браузер.','Start signing':'Начать показывать','Stop & translate':'Остановить и перевести','Translating…':'Переводим…','Sign another phrase':'Показать другую фразу','Recording your signs':'Записываем жесты','AI is reading the sequence…':'ИИ анализирует последовательность…','Demo translation':'Демо-перевод','Translation':'Перевод','confidence':'уверенность','Translation failed':'Ошибка перевода',
+    'Welcome to HandSign':'Добро пожаловать в HandSign','Good to see you again.':'Рады снова вас видеть.','Let’s learn your first sign.':'Давайте выучим первый жест.','Continue right where you left off.':'Продолжите с того места, где остановились.','Create your free account — no credit card needed.':'Создайте бесплатный аккаунт — карта не нужна.','Your name':'Ваше имя','Email address':'Электронная почта','Password':'Пароль','At least 6 characters':'Не менее 6 символов','Create free account':'Создать аккаунт','Got it':'Понятно','Toggle theme':'Переключить тему','Change language':'Изменить язык','Theme':'Тема','Light':'Светлая','Dark':'Тёмная',
+    'Privacy by design':'Конфиденциальность с самого начала','The frontend keeps camera processing local until you explicitly request an evaluation or translation. Connect your own privacy policy before launch.':'Обработка камеры остаётся локальной, пока вы явно не запросите оценку или перевод. Перед запуском подключите собственную политику конфиденциальности.','Keyboard navigation, visible focus states and readable contrast are included. Add signed video alternatives with your lesson content.':'Добавлены клавиатурная навигация, заметный фокус и читаемый контраст. Добавьте видео с жестами к материалам уроков.','We’re here to help':'Мы готовы помочь','For the prototype, connect this action to your support email or helpdesk URL.':'Подключите эту кнопку к почте поддержки или вашей helpdesk-системе.','Profile editing will be saved through PATCH /me/ after the Django endpoint is connected.':'После подключения Django изменения профиля будут сохраняться через PATCH /me/.',
+    'Camera is ready.':'Камера готова.','Camera requires localhost or HTTPS.':'Для камеры нужен localhost или HTTPS.','Camera access was blocked. Allow it in browser settings.':'Доступ к камере заблокирован. Разрешите его в настройках браузера.','Translation copied.':'Перевод скопирован.','Saved · backend offline':'Сохранено · backend не в сети','Connected ✓':'Подключено ✓','Testing…':'Проверяем…','Not tested':'Не проверено','Hello, I would like some water, please.':'Здравствуйте, я хотел бы воды, пожалуйста.',
+    'AccountSettings':'Настройки аккаунта', 'UserDetailsCustomAvatar':'Данные пользователя и свой аватар', 'YourName':'Ваше имя', 'EmailAddress':'Адрес электронной почты', 'UploadCustomAvatarImage':'Загрузить собственное изображение', 'OrSelectPresetIcon':'Или выбрать стандартную иконку', 'CustomUploadedImage':'Собственное изображение', 'AdvancedSettings':'Дополнительные настройки', 'Country':'Страна', 'Pronouns':'Местоимения', 'SkinTonePreference':'Оттенок кожи',
+    'ToneDefault':'По умолчанию', 'ToneLight':'Светлый', 'ToneMediumLight':'Светло-средний', 'ToneMedium':'Средний', 'ToneMediumDark':'Темно-средний', 'ToneDark':'Темный'
+  },
+  cs: {
+    'How it works':'Jak to funguje','Lessons':'Slovíčka','Words':'Slovíčka','Free translate':'Volný překlad','Pricing':'Ceník','Log in':'Přihlásit se','Start learning':'Začít se učit','AI-powered ASL learning':'Výuka ASL s podporou AI','Small signs.':'Malá gesta.','Big connections.':'Velká spojení.','Learn practical American Sign Language with real-time, judgment-free feedback — built for the everyday moments that matter most.':'Učte se praktický americký znakový jazyk s přátelskou zpětnou vazbou v reálném čase pro důležité každodenní okamžiky.','Start your first lesson':'Začít první lekci','See how it works':'Jak to funguje','Loved by early tester families':'Oblíbené u rodin prvních testerů','Practice anytime. Learn at your pace.':'Procvičujte kdykoli a svým tempem.','Hand tracking':'Sledování rukou','Accuracy':'Přesnost','Great form!':'Skvělé provedení!','LESSON 01':'SLOVÍČKO 01','Designed to connect with':'Připraveno k propojení s',
+    'Made for real life':'Pro skutečný život','From camera on to confident in three simple steps.':'Od zapnutí kamery k jistému gestu ve třech krocích.','No special equipment or prior experience. HandSign works right in your browser and meets you where you are.':'Bez zvláštního vybavení a zkušeností. HandSign funguje přímo v prohlížeči a přizpůsobí se vaší úrovni.','01 — PICK':'01 — VYBERTE','02 — PRACTICE':'02 — PROCVIČUJTE','03 — CONNECT':'03 — KOMUNIKUJTE','Choose a useful word':'Vyberte užitečné slovo','Start with what your family needs today — from “more” and “milk” to feelings and routines.':'Začněte tím, co vaše rodina potřebuje dnes – od „více“ a „mléko“ po pocity a rutiny.','Sign to your camera':'Znakujte do kamery','Our hand tracking follows your movement privately, directly in your browser, in real time.':'Pohyb rukou se soukromě sleduje v reálném čase přímo v prohlížeči.','Get kind, clear feedback':'Získejte jasnou radu','Receive specific coaching on hand shape, placement and motion — then celebrate your progress.':'Získejte konkrétní radu k tvaru, poloze a pohybu ruky a sledujte svůj pokrok.',
+    'Free sign translator':'Volný překladač znaků','Show it. We’ll put it into words.':'Ukažte to. My to převedeme na slova.','Turn on your camera, sign naturally, and get a text translation you can copy or hear aloud.':'Zapněte kameru, znakujte přirozeně a získejte text, který lze zkopírovat nebo přečíst nahlas.','Open free translator':'Otevřít překladač','Explore lessons':'Prozkoumat slovíčka','Start with words that open doors.':'Začněte slovy, která otevírají dveře.','View all lessons':'Všechna slovíčka','A little win, a huge moment':'Malé vítězství, velký okamžik','“The first time Leo signed ‘more’ at dinner, we both understood each other without a meltdown. I cried happy tears.”':'„Když Leo poprvé u večeře ukázal ‚více‘, porozuměli jsme si bez pláče. Plakala jsem radostí.“','HandSign pilot family':'Rodina z pilotního programu HandSign','Your first lesson is free':'První lekce je zdarma','A new way to understand each other starts here.':'Nový způsob vzájemného porozumění začíná zde.','Five minutes, one useful sign, and supportive feedback. No credit card required.':'Pět minut, jeden užitečný znak a podporující zpětná vazba. Karta není potřeba.','Try HandSign free':'Vyzkoušet HandSign zdarma','Built with care for every communicator.':'Vytvořeno s péčí pro každého, kdo chce komunikovat.','Privacy':'Soukromí','Accessibility':'Přístupnost','Support':'Podpora',
+    'Home':'Domů','Translate':'Překlad','Progress':'Pokrok','Profile':'Profil','Practice one lesson today to keep it going.':'Procvičte dnes jedno slovíčko a udržte sérii.','Practice one word today to keep it going.':'Procvičte dnes jedno slovíčko a udržte sérii.','day streak':'dní v řadě','Good morning, Alex 👋':'Dobré ráno, Alexi 👋','Ready for one small step forward?':'Jste připraveni na další malý krok?','Continue learning':'Pokračovat ve výuce','Everyday essentials':'Každodenní základy','Lesson 3 of 8 · You\'re learning words that make daily routines easier.':'Slovíčko 3 z 8 · Učíte se slova, která usnadňují denní rutinu.','Continue lesson':'Pokračovat ve slově','Continue word':'Pokračovat ve slově','Weekly goal':'Týdenní cíl','Two more days to reach your goal':'Ještě dva dny do splnění cíle','Recommended for you':'Doporučeno pro vás','See all':'Zobrazit vše',
+    'Lesson library':'Knihovna slovíček','Word library':'Knihovna slovíček','Practical signs, organized into small and friendly lessons.':'Praktické znaky v krátkých a srozumitelných slovíčkách.','All lessons':'Všechna slovíčka','All words':'Všechna slovíčka','Beginner':'Začátečník','Essential':'Nezbytné','Everyday':'Každodenní','Connection':'Spojení','New':'Nové','Hello':'Ahoj','Thank you':'Děkuji','More':'Více','Milk':'Mléko','Help':'Pomoc','Water':'Voda','Family':'Rodina','I love you':'Miluji tě',
+    'Your progress':'Váš pokrok','Every practice session is a meaningful step.':'Každé procvičování je důležitý krok.','Signs learned':'Naučené znaky','this week':'tento týden','Average accuracy':'Průměrná přesnost','this month':'tento měsíc','Practice time':'Doba cvičení','Across 9 sessions':'Během 9 cvičení','Your week':'Váš týden','Goal: 5 minutes a day':'Cíl: 5 minut denně',
+    'Profile & settings':'Profil a nastavení','Manage your account and backend connection.':'Spravujte účet a připojení backendu.','Learning ASL':'Učí se ASL','Edit profile':'Upravit profil','Backend connection':'Připojení backendu','API settings':'Nastavení API','Set the Django API base once. It is stored only in this browser.':'Nastavte adresu Django API. Uloží se pouze v tomto prohlížeči.','API base URL':'Základní URL API','Save & test':'Uložit a otestovat','Not tested':'Netestováno','Plan':'Tarif','Free explorer':'Zdarma','Four starter lessons and free translator previews.':'Čtyři úvodní slovíčka a bezplatný náhled překladače.','Upgrade to Family':'Přejít na Family',
+    'Guided lesson · Beginner':'Vedené slovíčko · Začátečník','Guided word · Beginner':'Vedené slovíčko · Začátečník','Ready when you are':'Začněte, až budete připraveni','Turn on your camera and place your upper body inside the guide.':'Zapněte kameru a umístěte horní část těla do rámečku.','Private on-device tracking':'Soukromé sledování v zařízení','Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.':'Podívejte se na příklad a zopakujte pohyb zrcadlově. Ruku držte uvolněnou a viditelnou.','Quick tip':'Rychlý tip','Face your palm forward and make the motion gently, not too fast.':'Otočte dlaň dopředu a pohybujte jemně, ne příliš rychle.','Turn on camera':'Zapnout kameru','Turn off camera':'Vypnout kameru','Check my sign':'Zkontrolovat znak','Analyzing…':'Analyzuji…','Looking at your movement…':'Sleduji váš pohyb…','Could not analyze':'Analýza se nezdařila','match':'shoda','Demo':'Demo',
+    'Your signing space':'Prostor pro znakování','Turn on the camera, then press “Start signing”. Use natural pauses between phrases.':'Zapněte kameru, stiskněte „Začít znakovat“ a mezi frázemi dělejte přirozené pauzy.','Ready to translate':'Připraveno k překladu','Free translation · ASL → English':'Volný překlad · ASL → Čeština','Sign freely':'Znakujte volně','Show a phrase of up to 20 seconds. HandSign sends the captured sequence to':'Ukažte frázi dlouhou až 20 sekund. HandSign odešle zaznamenanou sekvenci na','and returns plain text.':'a vrátí běžný text.','Translation will appear here':'Zde se zobrazí překlad','Copy text':'Kopírovat text','Read aloud':'Přečíst nahlas','Camera data is used only for this translation. In demo mode, no clip leaves your browser.':'Data z kamery se použijí pouze pro tento překlad. V demo režimu záznam neopustí prohlížeč.','Start signing':'Začít znakovat','Stop & translate':'Zastavit a přeložit','Translating…':'Překládám…','Sign another phrase':'Ukázat další frázi','Recording your signs':'Nahrávám znaky','AI is reading the sequence…':'AI analyzuje sekvenci…','Demo translation':'Demo překlad','Translation':'Překlad','confidence':'jistota','Translation failed':'Překlad se nezdařil',
+    'Welcome to HandSign':'Vítejte v HandSign','Good to see you again.':'Rádi vás znovu vidíme.','Let’s learn your first sign.':'Naučme se váš první znak.','Continue right where you left off.':'Pokračujte tam, kde jste skončili.','Create your free account — no credit card needed.':'Vytvořte si bezplatný účet – karta není potřeba.','Your name':'Vaše jméno','Email address':'E-mail','Password':'Heslo','At least 6 characters':'Alespoň 6 znaků','Create free account':'Vytvořit účet','Got it':'Rozumím','Toggle theme':'Přepnout motiv','Change language':'Změnit jazyk','Theme':'Motiv','Light':'Světlý','Dark':'Tmavý',
+    'Camera is ready.':'Kamera je připravena.','Camera requires localhost or HTTPS.':'Kamera vyžaduje localhost nebo HTTPS.','Camera access was blocked. Allow it in browser settings.':'Přístup ke kameře byl zablokován. Povolte jej v nastavení prohlížeče.','Translation copied.':'Překlad byl zkopírován.','Saved · backend offline':'Uloženo · backend je offline','Connected ✓':'Připojeno ✓','Testing…':'Testuji…','Hello, I would like some water, please.':'Dobrý den, prosím, chtěl bych trochu vody.',
+    'AccountSettings':'Nastavení účtu', 'UserDetailsCustomAvatar':'Podrobnosti o uživateli a vlastní avatar', 'YourName':'Vaše jméno', 'EmailAddress':'E-mailová adresa', 'UploadCustomAvatarImage':'Nahrát vlastní obrázek avatara', 'OrSelectPresetIcon':'Nebo vybrat přednastavenou ikonu', 'CustomUploadedImage':'Vlastní nahraný obrázek', 'AdvancedSettings':'Pokročilá nastavení', 'Country':'Země', 'Pronouns':'Zájmena', 'SkinTonePreference':'Předvolba tónu pleti',
+    'ToneDefault':'Výchozí', 'ToneLight':'Světlý', 'ToneMediumLight':'Světlý střední', 'ToneMedium':'Střední', 'ToneMediumDark':'Tmavší střední', 'ToneDark':'Tmavý'
+  }
+};
+
+Object.assign(dictionaries.ru, {
+  'Log in →':'Войти →','Create free account →':'Создать аккаунт →','Hello 👋':'Привет 👋',
+  'Open free translator →':'Открыть переводчик →','View all lessons →':'Все уроки →','Try HandSign free →':'Попробовать HandSign бесплатно →',
+  'Day 18 · 12 signs learned':'День 18 · изучено 12 жестов','7 day streak 🔥':'7 дней подряд 🔥','🔥 7 day streak':'🔥 7 дней подряд',
+  'Continue lesson →':'Продолжить урок →','3 min':'3 мин','4 min':'4 мин','5 min':'5 мин','6 min':'6 мин','◷ 3 min':'◷ 3 мин','◷ 4 min':'◷ 4 мин','◷ 5 min':'◷ 5 мин','◷ 6 min':'◷ 6 мин',
+  '+4 this week':'+4 на этой неделе','↑ 7% this month':'↑ 7% в этом месяце','alex@example.com · Learning ASL':'alex@example.com · изучает ASL',
+  'Your hand shape looks right. Try raising your hand slightly closer to your temple.':'Форма руки правильная. Попробуйте поднять её немного ближе к виску.',
+  'Demo account ready — connect Django in Profile.':'Демо-аккаунт готов — подключите Django в профиле.','Welcome to HandSign!':'Добро пожаловать в HandSign!',
+  'Demo feedback shown — API endpoint is ready to connect.':'Показан демо-совет — API endpoint готов к подключению.','Sign analyzed successfully.':'Жест успешно проанализирован.',
+  'Demo result shown — connect POST /translate/ for real recognition.':'Показан демо-результат — подключите POST /translate/ для настоящего распознавания.','Translation complete.':'Перевод готов.',
+  'Django API connected.':'Django API подключён.','URL saved. Start Django and test again.':'URL сохранён. Запустите Django и повторите проверку.',
+  'Opening checkout…':'Открываем оплату…','Stripe endpoint is ready; demo mode does not open payment.':'Stripe endpoint готов; в демо-режиме оплата не открывается.','Upgrade to Family':'Перейти на Family'
+  ,'Connecting…':'Подключаемся…','Try again':'Попробовать снова','Close':'Закрыть','Go back':'Назад','Open menu':'Открыть меню','Open profile':'Открыть профиль','Application navigation':'Навигация приложения',
+  'Camera is ready. Show the sign, then check it again.':'Камера готова. Покажите жест и нажмите проверку ещё раз.','This browser does not support gesture recording.':'Этот браузер не поддерживает запись жестов.','Could not copy the translation.':'Не удалось скопировать перевод.','Speech is not supported in this browser.':'Этот браузер не поддерживает озвучивание.','Unexpected checkout URL.':'Небезопасный адрес оплаты.','Use HTTPS for a remote API.':'Для удалённого API используйте HTTPS.'
+  ,'Good morning':'Доброе утро','Sign out':'Выйти','Save changes':'Сохранить изменения','Saving…':'Сохраняем…','Profile updated.':'Профиль обновлён.','Signed out.':'Вы вышли из аккаунта.','Keep your learning profile up to date.':'Поддерживайте данные учебного профиля в актуальном состоянии.','If the camera is not working, check browser permissions first. Account and billing support can be connected to your support desk before public launch.':'Если камера не работает, сначала проверьте разрешения браузера. Поддержку аккаунта и оплаты можно подключить к вашей службе поддержки перед публичным запуском.'
+});
+
+Object.assign(dictionaries.cs, {
+  'Log in →':'Přihlásit se →','Create free account →':'Vytvořit účet →','Hello 👋':'Ahoj 👋',
+  'Open free translator →':'Otevřít překladač →','View all lessons →':'Všechna slovíčka →','Try HandSign free →':'Vyzkoušet HandSign zdarma →',
+  'Day 18 · 12 signs learned':'Den 18 · 12 naučených znaků','7 day streak 🔥':'7 dní v řadě 🔥','🔥 7 day streak':'🔥 7 dní v řadě',
+  'Continue lesson →':'Pokračovat ve slově →','3 min':'3 min','4 min':'4 min','5 min':'5 min','6 min':'6 min',
+  '+4 this week':'+4 tento týden','↑ 7% this month':'↑ 7 % tento měsíc','alex@example.com · Learning ASL':'alex@example.com · učí se ASL',
+  'Your hand shape looks right. Try raising your hand slightly closer to your temple.':'Tvar ruky je správný. Zkuste ji zvednout trochu blíže ke spánku.',
+  'Demo account ready — connect Django in Profile.':'Demo účet je připraven – připojte Django v profilu.','Welcome to HandSign!':'Vítejte v HandSign!',
+  'Demo feedback shown — API endpoint is ready to connect.':'Zobrazena demo rada – API endpoint je připraven k připojení.','Sign analyzed successfully.':'Znak byl úspěšně analyzován.',
+  'Demo result shown — connect POST /translate/ for real recognition.':'Zobrazen demo výsledek – pro skutečné rozpoznávání připojte POST /translate/.','Translation complete.':'Překlad je hotový.',
+  'Django API connected.':'Django API je připojeno.','URL saved. Start Django and test again.':'URL uloženo. Spusťte Django a test zopakujte.',
+  'Opening checkout…':'Otevírám platbu…','Stripe endpoint is ready; demo mode does not open payment.':'Stripe endpoint je připraven; demo režim platbu neotevře.','Upgrade to Family':'Přejít na Family'
+  ,'Privacy by design':'Soukromí od samého začátku','The frontend keeps camera processing local until you explicitly request an evaluation or translation. Connect your own privacy policy before launch.':'Zpracování kamery zůstává lokální, dokud výslovně nepožádáte o vyhodnocení nebo překlad. Před spuštěním připojte vlastní zásady ochrany soukromí.','Keyboard navigation, visible focus states and readable contrast are included. Add signed video alternatives with your lesson content.':'Součástí je ovládání klávesnicí, viditelné zaměření a čitelný kontrast. K lekcím přidejte alternativy ve znakovém videu.','We’re here to help':'Rádi vám pomůžeme','For the prototype, connect this action to your support email or helpdesk URL.':'Propojte tuto akci s e-mailem podpory nebo helpdeskem.','Profile editing will be saved through PATCH /me/ after the Django endpoint is connected.':'Po připojení Django endpointu se profil uloží přes PATCH /me/.',
+  'Invalid credentials':'Neplatné přihlašovací údaje',
+  'A user with that username already exists.':'Uživatel s tímto jménem již existuje.',
+  'User with this email already exists.':'Uživatel s tímto e-mailem již existuje.',
+  'A user with that username or email already exists.':'Uživatel s tímto jménem nebo e-mailem již existuje.',
+  'This field may not be blank.':'Toto pole nesmí být prázdné.',
+
+  'Welcome!': 'Vítej!',
+  'What is your sign language knowledge?': 'Jaké jsou tvé znalosti znakového jazyka?',
+  'We will help you customize your learning. Choose one option:': 'Pomůžeme ti nastavit výuku na míru. Vyber jednu z možností:',
+  'I have no knowledge': 'Nemám žádnou znalost',
+  'You will start from absolute basics and simplest words.': 'Začneš od úplných základů a nejjednodušších slovíček.',
+  'I have some knowledge': 'Mám nějakou znalost',
+  'You will launch a short placement quiz to determine your level.': 'Spustíš krátký rozřazovací kvíz, který určí tvou úroveň.',
+  'Placement': 'Rozřazení',
+  'Loading placement quiz...': 'Načítám rozřazovací kvíz...',
+  'Preparing questions from our database.': 'Připravujeme otázky z naší databáze.',
+  'Not enough words with video in the database.': 'Nedostatek slov s videem v databázi.',
+  'Could not load the quiz.': 'Nepodařilo se načíst kvíz.',
+  'Question {current} of {total}': 'Otázka {current} ze {total}',
+  'What does this sign mean?': 'Co znamená tento znak?',
+  'Daily Goal': 'Denní cíl',
+  'What is your daily goal?': 'Jaký je tvůj denní cíl cvičení?',
+  'Choose a time goal you want to meet daily to keep your streak:': 'Vyber si časový cíl, který chceš každý den splnit pro udržení streaku:',
+  'Regular': 'Pravidelně',
+  'Active': 'Aktivně',
+  'Intense': 'Intenzivně',
+  'minutes a day': 'minut denně',
+  'Complete setup →': 'Dokončit nastavení →',
+  'Saving...': 'Ukládám...',
+  'Try again': 'Zkusit znovu',
+  'Failed to save preferences.': 'Nepodařilo se uložit preference.',
+  'Setup complete! Your level:': 'Nastavení dokončeno! Tvoje úroveň:',
+  'Intermediate': 'Mírně pokročilý',
+  'Advanced Beginner': 'Pokročilý začátečník',
+  'Beginner': 'Začátečník',
+  'Lesson {num}': 'Lekce {num}',
+  'Contains {count} words': 'Obsahuje {count} slovíček',
+  'Choose a word to practice:': 'Vyber si slovo k procvičování:',
+  'New': 'Nové',
+  'Shop': 'Obchod',
+  'Coin Shop': 'Mincovní obchod',
+  'Collect coins for successful practice and unlock premium benefits!': 'Sbírej mince za úspěšné cvičení lekcí a odemykej si prémiové výhody!',
+  'Your coins': 'Tvoje mince',
+  '24 hours Premium Access': '24 hodin Premium Přístup',
+  'Unlocks all videos and Gemini AI for 24 hours.': 'Odemkne všechna videa a Gemini AI na 24 hodin.',
+  'Buying...': 'Kupuji...',
+  'Premium activated!': 'Premium aktivováno!',
+  'Error during purchase.': 'Chyba při nákupu.',
+  'words': 'slov',
+  'done': 'hotovo',
+  'Section': 'Sekce'
+});
+
+Object.assign(dictionaries.ru, {
+  'Invalid credentials':'Неверные данные для входа',
+  'A user with that username already exists.':'Пользователь с таким именем уже существует.',
+  'User with this email already exists.':'Пользователь с таким email уже существует.',
+  'A user with that username or email already exists.':'Пользователь с таким именем или email уже существует.',
+  'This field may not be blank.':'Это поле не может быть пустым.',
+
+  'Welcome!': 'Добро пожаловать!',
+  'What is your sign language knowledge?': 'Какой у вас уровень знаний языка жестов?',
+  'We will help you customize your learning. Choose one option:': 'Мы поможем настроить обучение. Выберите один из вариантов:',
+  'I have no knowledge': 'Нет знаний',
+  'You will start from absolute basics and simplest words.': 'Вы начнёте с абсолютных азов и простых слов.',
+  'I have some knowledge': 'Есть базовые знания',
+  'You will launch a short placement quiz to determine your level.': 'Вы запустите короткий тест для определения уровня.',
+  'Placement': 'Тест',
+  'Loading placement quiz...': 'Загрузка теста...',
+  'Preparing questions from our database.': 'Подготовка вопросов из нашей базы данных.',
+  'Not enough words with video in the database.': 'Недостаточно слов с видео в базе данных.',
+  'Could not load the quiz.': 'Не удалось загрузить тест.',
+  'Question {current} of {total}': 'Вопрос {current} из {total}',
+  'What does this sign mean?': 'Что значит этот жест?',
+  'Daily Goal': 'Ежедневная цель',
+  'What is your daily goal?': 'Какова ваша ежедневная цель?',
+  'Choose a time goal you want to meet daily to keep your streak:': 'Выберите цель по времени на каждый день для сохранения серии:',
+  'Regular': 'Обычная',
+  'Active': 'Активная',
+  'Intense': 'Интенсивная',
+  'minutes a day': 'минут в день',
+  'Complete setup →': 'Завершить настройку →',
+  'Saving...': 'Сохранение...',
+  'Try again': 'Попробовать снова',
+  'Failed to save preferences.': 'Не удалось сохранить настройки.',
+  'Setup complete! Your level:': 'Настройка завершена! Ваш уровень:',
+  'Intermediate': 'Средний',
+  'Advanced Beginner': 'Продвинутый новичок',
+  'Beginner': 'Начальный',
+  'Lesson {num}': 'Урок {num}',
+  'Contains {count} words': 'Содержит {count} слов',
+  'Choose a word to practice:': 'Выберите слово для тренировки:',
+  'New': 'Новое',
+  'Shop': 'Магазин',
+  'Coin Shop': 'Магазин монет',
+  'Collect coins for successful practice and unlock premium benefits!': 'Собирайте монеты за тренировки и открывайте премиум-привилегии!',
+  'Your coins': 'Ваши монеты',
+  '24 hours Premium Access': '24 часа Премиум доступа',
+  'Unlocks all videos and Gemini AI for 24 hours.': 'Открывает все видео и Gemini AI на 24 часа.',
+  'Buying...': 'Покупка...',
+  'Premium activated!': 'Премиум активирован!',
+  'Error during purchase.': 'Ошибка при покупке.',
+  'words': 'слов',
+  'done': 'выполнено',
+  'Words': 'Слова',
+  'Section': 'Раздел'
+});
+
+const supported = ['en','ru','cs'];
+const stored = localStorage.getItem('handsign_language');
+const fromUrl = new URLSearchParams(location.search).get('lang');
+let current = supported.includes(fromUrl) ? fromUrl : supported.includes(stored) ? stored : supported.find(code => navigator.language.toLowerCase().startsWith(code)) || 'en';
+
+function translate(text) {
+  return dictionaries[current]?.[text] || text;
+}
+
+function canonicalKey(text) {
+  for (const dictionary of Object.values(dictionaries)) {
+    for (const [key, value] of Object.entries(dictionary)) if (value === text) return key;
+  }
+  return text;
+}
+
+function apply(root = document) {
+  document.documentElement.lang = current;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    if (['SCRIPT','STYLE'].includes(node.parentElement?.tagName)) return;
+    const original = node.nodeValue.trim();
+    const translated = translate(canonicalKey(original));
+    if (translated !== original) node.nodeValue = node.nodeValue.replace(original, translated);
+  });
+  root.querySelectorAll?.('[placeholder]').forEach(el => el.placeholder = translate(canonicalKey(el.placeholder)));
+  root.querySelectorAll?.('[aria-label]').forEach(el => el.setAttribute('aria-label', translate(canonicalKey(el.getAttribute('aria-label')))));
+  root.querySelectorAll?.('[title]').forEach(el => el.title = translate(canonicalKey(el.title)));
+  document.title = current === 'ru' ? 'HandSign — учитесь общаться' : current === 'cs' ? 'HandSign — učte se komunikovat' : 'HandSign — Learn to connect';
+}
+
+  get current(){ return current; },
+  set(language){ if(supported.includes(language)){ current=language; localStorage.setItem('handsign_language',language); } },
+  t: translate,
+  apply,
+  supported
+};

@@ -47,6 +47,20 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
             user = serializer.save()
+            
+            # Send welcome email
+            from django.core.mail import send_mail
+            try:
+                send_mail(
+                    subject="Vítej v aplikaci HandSign! 🤟",
+                    message=f"Ahoj {user.first_name or user.username},\n\nvítáme tě v aplikaci HandSign – tvém osobním průvodci výukou znakového jazyka! Přihlas se, projdi si onboarding a začni trénovat s kamerou.\n\nHodně štěstí,\nTým HandSign",
+                    from_email="noreply@handsign.cz",
+                    recipient_list=[user.email or "user@example.com"],
+                    fail_silently=True
+                )
+            except Exception:
+                pass
+
             token, _ = Token.objects.get_or_create(user=user)
             user_data = format_user_data(user)
             return Response({
@@ -95,6 +109,9 @@ class UserProfileView(APIView):
         avatar = request.data.get('avatar')
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
+        country = request.data.get('country')
+        pronouns = request.data.get('pronouns')
+        skin_tone = request.data.get('skin_tone')
 
         if request.user.is_authenticated:
             user = request.user
@@ -113,6 +130,19 @@ class UserProfileView(APIView):
                 user.email = email
             if avatar:
                 user.avatar = avatar
+            if country is not None:
+                user.country = country
+            if pronouns is not None:
+                user.pronouns = pronouns
+            if skin_tone is not None:
+                user.skin_tone = skin_tone
+            if 'daily_goal_minutes' in request.data:
+                try:
+                    user.daily_goal_minutes = int(request.data['daily_goal_minutes'])
+                except ValueError:
+                    pass
+            if request.data.get('onboarding_completed') is True:
+                user.onboarding_completed = True
 
             user.save()
             return Response(format_user_data(user))
@@ -121,7 +151,10 @@ class UserProfileView(APIView):
                 'name': name or 'Alex Morgan',
                 'email': email or 'alex@example.com',
                 'avatar': avatar or '👤',
-                'is_subscribed': False
+                'is_subscribed': False,
+                'country': country or '',
+                'pronouns': pronouns or '',
+                'skin_tone': skin_tone or 'default'
             })
 
 class CreateStripeCheckoutSessionView(APIView):
@@ -196,6 +229,19 @@ class StripeWebhookView(APIView):
                     user.is_subscribed = True
                     user.stripe_customer_id = data_object.get('customer')
                     user.save()
+
+                    # Send payment confirmation email
+                    from django.core.mail import send_mail
+                    try:
+                        send_mail(
+                            subject="Potvrzení platby – HandSign 💳",
+                            message=f"Ahoj {user.first_name or user.username},\n\nděkujeme za zakoupení rodinného předplatného HandSign Family Full Access ($10.00 USD)!\n\nTvoje platba proběhla úspěšně a všechny prémiové lekce a Gemini AI koučování byly pro tvůj účet plně odemčeny.\n\nPřejeme spoustu zábavy při výuce,\nTým HandSign",
+                            from_email="billing@handsign.cz",
+                            recipient_list=[user.email or "user@example.com"],
+                            fail_silently=True
+                        )
+                    except Exception:
+                        pass
                 except User.DoesNotExist:
                     pass
 
@@ -211,10 +257,18 @@ class FriendshipListView(APIView):
     def get(self, request):
         user = request.user
         
+        friends_page = int(request.query_params.get('friends_page', 1))
+        requests_page = int(request.query_params.get('requests_page', 1))
+        page_size = 20
+
         # 1. Friends list (accepted friendships)
-        friendships = Friendship.objects.filter(
+        friendships_qs = Friendship.objects.filter(
             (Q(from_user=user) | Q(to_user=user)) & Q(status='accepted')
         )
+        total_friends = friendships_qs.count()
+        friendships = friendships_qs[(friends_page-1)*page_size : friends_page*page_size]
+        friends_next = f"?friends_page={friends_page+1}" if total_friends > friends_page*page_size else None
+        
         friends_data = []
         for f in friendships:
             friend = f.to_user if f.from_user == user else f.from_user
@@ -230,7 +284,11 @@ class FriendshipListView(APIView):
         friends_data.sort(key=lambda x: x['streak'], reverse=True)
 
         # 2. Pending incoming requests
-        pending_requests = Friendship.objects.filter(to_user=user, status='pending')
+        pending_qs = Friendship.objects.filter(to_user=user, status='pending')
+        total_requests = pending_qs.count()
+        pending_requests = pending_qs[(requests_page-1)*page_size : requests_page*page_size]
+        requests_next = f"?requests_page={requests_page+1}" if total_requests > requests_page*page_size else None
+        
         requests_data = []
         for r in pending_requests:
             requests_data.append({
@@ -264,7 +322,9 @@ class FriendshipListView(APIView):
 
         return Response({
             'friends': friends_data,
+            'friends_next': friends_next,
             'requests': requests_data,
+            'requests_next': requests_next,
             'suggestions': suggestions_data
         })
 
@@ -342,4 +402,121 @@ class FriendshipRespondView(APIView):
             friendship.status = 'rejected'
             friendship.save()
             return Response({'message': 'Friend request rejected.'})
+
+
+from django.utils import timezone
+
+class UserPreferencesView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        language_level = request.data.get('language_level')
+        daily_goal_minutes = request.data.get('daily_goal_minutes')
+
+        if language_level:
+            user.language_level = language_level
+        if daily_goal_minutes:
+            try:
+                user.daily_goal_minutes = int(daily_goal_minutes)
+            except ValueError:
+                pass
+
+        user.onboarding_completed = True
+        user.save()
+        return Response(format_user_data(user))
+
+class StoreBuyPremiumView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        cost = 500  # 500 coins for 24 hours of premium
+        if user.coins < cost:
+            return Response({'error': f'Nedostatek mincí. Potřebuješ {cost} mincí.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.coins -= cost
+        # Add 24 hours to premium_expires_at
+        now = timezone.now()
+        if user.premium_expires_at and user.premium_expires_at > now:
+            user.premium_expires_at = user.premium_expires_at + timezone.timedelta(hours=24)
+        else:
+            user.premium_expires_at = now + timezone.timedelta(hours=24)
+        user.save()
+        return Response({
+            'message': 'Premium aktivováno na 24 hodin!',
+            'user': format_user_data(user)
+        })
+
+class LeaderboardView(APIView):
+    def get(self, request):
+        timeframe = request.query_params.get('timeframe', 'all_time')
+        country = request.query_params.get('country', 'global')
+
+        from users.models import User, XPEntry
+        from django.db.models import Sum
+
+        users_qs = User.objects.filter(is_active=True, is_staff=False)
+        if country and country != 'global':
+            users_qs = users_qs.filter(country=country)
+
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 50
+
+        if timeframe == 'all_time':
+            users = users_qs.order_by('-xp')
+            page = paginator.paginate_queryset(users, request, view=self)
+            
+            data = []
+            for u in (page if page is not None else users):
+                if u.xp > 0:
+                    data.append({
+                        'username': u.username,
+                        'avatar': u.avatar or '👤',
+                        'xp': u.xp,
+                        'country': u.country
+                    })
+        else:
+            now = timezone.now()
+            if timeframe == 'today':
+                start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif timeframe == 'week':
+                start_date = now - timezone.timedelta(days=now.weekday())
+                start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif timeframe == 'month':
+                start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            else:
+                start_date = now
+
+            # Filter XPEntries
+            entries = XPEntry.objects.filter(created_at__gte=start_date)
+            # Group by user and sum amount
+            user_xps = entries.values('user').annotate(total_xp=Sum('amount')).order_by('-total_xp')
+            
+            page = paginator.paginate_queryset(user_xps, request, view=self)
+            
+            data = []
+            for entry in (page if page is not None else user_xps):
+                try:
+                    u = users_qs.get(id=entry['user'])
+                    data.append({
+                        'username': u.username,
+                        'avatar': u.avatar or '👤',
+                        'xp': entry['total_xp'],
+                        'country': u.country
+                    })
+                except User.DoesNotExist:
+                    pass
+                    
+        if page is not None:
+            return paginator.get_paginated_response(data)
+
+        return Response({'leaderboard': data})
+
+class ActiveCountriesView(APIView):
+    def get(self, request):
+        from users.models import User
+        countries = User.objects.exclude(country='').values_list('country', flat=True).distinct()[:50]
+        return Response({'countries': list(countries)})
 

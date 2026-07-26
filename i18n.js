@@ -78,7 +78,211 @@ Object.assign(dictionaries.ru, {
   'This field may not be blank.':'Это поле не может быть пустым.'
 });
 
+Object.assign(dictionaries.ru, {
+  'Hand shape':'Форма рук','Position':'Положение','Movement':'Движение',
+  'Keep your hand relaxed and clearly visible.':'Расслабьте руку и держите её полностью в кадре.',
+  'Keep your signing hand visible inside the guide.':'Держите рабочую руку полностью внутри рамки.',
+  'Keep both hands visible inside the guide.':'Держите обе руки полностью внутри рамки.',
+  'Follow the animated skeleton from start to finish, then lower your hands.':'Повторите движение скелета от начала до конца, затем можете опустить руки.',
+  'This sign also uses facial expression. Keep your full face visible.':'В этом жесте важна мимика. Держите лицо полностью в кадре.',
+  'Waiting for your sign':'Ожидаем жест','The check button will unlock when the movement is captured.':'Кнопка проверки станет доступна после записи движения.',
+  'Show the sign again to unlock another check.':'Покажите жест ещё раз для новой проверки.',
+  'Sign captured':'Жест записан','You can lower your hands and press Check my sign.':'Можно опустить руки и нажать «Проверить жест».',
+  'Show the complete sign — it will be captured automatically':'Покажите жест полностью — он запишется автоматически',
+  '✓ Sign captured — you can lower your hands':'✓ Жест записан — можно опустить руки',
+  'Shows shape, position and movement':'Показывает форму, положение и движение',
+  'Both hands detected':'Обе руки распознаны','Hand detected':'Рука распознана','Show both hands (0/2)':'Покажите обе руки (0/2)','Show both hands (1/2)':'Покажите обе руки (1/2)','Show your hand':'Покажите руку',
+  '2 hands':'2 руки','1 hand':'1 рука',
+  'Add Friend by Username':'Добавить друга по имени','Enter username...':'Введите имя пользователя…','Add':'Добавить',
+  'Authentication credentials were not provided.':'Сначала войдите в аккаунт, чтобы добавлять друзей.',
+  'Manage your user account, security and custom avatar.':'Управляйте аккаунтом, безопасностью и изображением профиля.',
+  'Account Settings':'Настройки аккаунта','User Details & Custom Avatar':'Данные пользователя и изображение профиля',
+  'Your Name':'Ваше имя','Email Address':'Электронная почта','Upload Custom Avatar Image':'Загрузить своё изображение',
+  'Or Select Preset Icon':'Или выбрать готовую иконку','Custom Uploaded Image':'Загруженное изображение',
+  'Default Profile':'Стандартный профиль','Woman':'Женщина','Man':'Мужчина','Girl':'Девочка','Boy':'Мальчик',
+  'New Password (optional)':'Новый пароль (необязательно)','Save settings':'Сохранить настройки','Sign out':'Выйти',
+  'Learning overview':'Обучение','Your ASL journey':'Ваш прогресс в ASL','Full progress':'Вся статистика',
+  'Recent signs':'Последние жесты','Complete a lesson to see it here.':'Пройдите урок — изученные жесты появятся здесь.',
+  'Completed lessons':'Завершённые уроки','Based on attempts':'По выполненным попыткам','Across 0 attempts':'За 0 попыток',
+  'Subscription & Plan':'Подписка и тариф','Free Explorer':'Бесплатный тариф',
+  '👤 Default Profile':'👤 Стандартный профиль','Four starter lessons and free translator previews.':'Четыре начальных урока и пробный перевод жестов.',
+  'Upgrade to Family ($10)':'Перейти на семейный тариф ($10)',
+  'Squeeze hand open and closed as if milking a cow.':'Плавно сжимайте и раскрывайте кулак, словно доите корову.',
+  'Form W-shape with index, middle, ring finger at chin.':'Сложите указательный, средний и безымянный пальцы в форму W и коснитесь указательным пальцем подбородка.',
+  'Bring flattened O-hand shape to mouth repeatedly.':'Сложите пальцы в плоскую форму O и несколько раз поднесите их ко рту.',
+  'Form C-shape with hand as if tipping a cup to mouth.':'Сложите кисть в форму C и наклоните её ко рту, словно пьёте из чашки.',
+  'Twist knuckle of index finger against cheek.':'Коснитесь щеки костяшкой указательного пальца и слегка поверните кисть.',
+  'Twist curved hand on palm as if cutting out a cookie.':'Поверните согнутую кисть на ладони второй руки, словно вырезаете печенье.',
+  'Tap thumb of open hand to chin.':'Раскройте ладонь и коснитесь большим пальцем подбородка.',
+  'Tap thumb of open hand to forehead.':'Раскройте ладонь и коснитесь большим пальцем лба.',
+  'Cradle arms side-to-side as if rocking a baby.':'Сложите обе руки, словно держите ребёнка, и мягко покачайте их из стороны в сторону.',
+  'L-hands moving from forehead down to touch.':'Сложите обе кисти в форму L, опустите одну ото лба и соедините руки.',
+  'L-hands moving from chin down to touch.':'Сложите обе кисти в форму L, опустите одну от подбородка и соедините руки.',
+  'Place fist on open palm and lift up together.':'Поставьте кулак одной руки на раскрытую ладонь другой и поднимите обе руки вместе.',
+  'Rub flat open palm in circular motion on chest.':'Положите раскрытую ладонь на грудь и двигайте ею по кругу.',
+  'Touch fingers to chin and move hand forward towards person.':'Коснитесь пальцами подбородка и плавно отведите ладонь вперёд.',
+  'Nod S-hand shape up and down like a head nodding.':'Сложите кулак в форму S и покачайте им вверх-вниз, словно киваете.',
+  'Snap index and middle finger together with thumb.':'Несколько раз сведите указательный и средний пальцы с большим.',
+  'Tap fingertips of both hands together repeatedly.':'Соберите пальцы обеих рук в щепоть и несколько раз соедините кончики пальцев.',
+  'Flick open hands outward twice.':'Дважды разверните обе раскрытые ладони наружу.',
+  'Touch fingertips from mouth to cheek.':'Коснитесь собранными пальцами уголка рта, затем щеки.',
+  'Cross both fists over chest in an X shape.':'Скрестите обе руки с кулаками на груди в форме X.',
+  'Pat open palm upward against chest repeatedly.':'Обеими раскрытыми ладонями несколько раз проведите вверх перед грудью и добавьте улыбку.',
+  'Bring open hands down face while tilting head slightly.':'Проведите обеими раскрытыми ладонями вниз перед лицом и слегка наклоните голову.',
+  'Twist Y-hand shapes at wrist back and forth.':'Сложите обе кисти в форму Y и поворачивайте их в запястьях.',
+  'Draw open hand down face closing into a flattened fist.':'Проведите раскрытой ладонью вниз перед лицом, постепенно собирая пальцы.',
+  'Chop edge of open hand down into flat palm.':'Ребром одной ладони сделайте движение вниз к раскрытой второй ладони.',
+  'Reach out with clawed hands and pull inward.':'Вытяните обе согнутые кисти вперёд и потяните их к себе.',
+  'Fist with thumb resting against side of index finger.':'Сожмите кулак, большой палец держите сбоку указательного.',
+  'Four fingers straight up with thumb tucked across palm.':'Выпрямите четыре пальца вверх, большой прижмите поперёк ладони.',
+  'Curved hand forming C shape.':'Согните пальцы и большой палец, образуя кистью букву C.',
+  'Index finger up, other fingers forming O with thumb.':'Поднимите указательный палец, остальные соедините с большим в кольцо.',
+  'All fingers curled tightly down touching thumb.':'Согните все пальцы вниз так, чтобы они касались большого.',
+  'Index and thumb touching in circle, other 3 fingers up.':'Соедините указательный с большим в кольцо, остальные три выпрямите вверх.',
+  'Index and thumb pointing sideways parallel.':'Направьте указательный и большой пальцы параллельно в сторону.',
+  'Index and middle finger pointing sideways together.':'Соедините указательный и средний пальцы и направьте их в сторону.',
+  'Pinky finger up, other fingers in a fist.':'Поднимите мизинец, остальные пальцы сожмите в кулак.',
+  'Thumb and index finger extended at right angle forming L.':'Выпрямите большой и указательный пальцы под прямым углом, образуя L.'
+});
+
+Object.assign(dictionaries.cs, {
+  'Hand shape':'Tvar rukou','Position':'Poloha','Movement':'Pohyb',
+  'Keep your hand relaxed and clearly visible.':'Uvolněte ruku a ponechte ji celou v záběru.',
+  'Keep your signing hand visible inside the guide.':'Držte znakující ruku celou uvnitř rámečku.',
+  'Keep both hands visible inside the guide.':'Držte obě ruce celé uvnitř rámečku.',
+  'Follow the animated skeleton from start to finish, then lower your hands.':'Sledujte animovanou kostru od začátku do konce a potom ruce spusťte.',
+  'This sign also uses facial expression. Keep your full face visible.':'Tento znak používá také mimiku. Ponechte celý obličej v záběru.',
+  'Waiting for your sign':'Čekáme na váš znak','The check button will unlock when the movement is captured.':'Tlačítko kontroly se odemkne po zachycení pohybu.',
+  'Show the sign again to unlock another check.':'Pro další kontrolu ukažte znak znovu.',
+  'Sign captured':'Znak zachycen','You can lower your hands and press Check my sign.':'Můžete spustit ruce a stisknout „Zkontrolovat znak“.',
+  'Show the complete sign — it will be captured automatically':'Ukažte celý znak — zachytí se automaticky',
+  '✓ Sign captured — you can lower your hands':'✓ Znak zachycen — můžete spustit ruce',
+  'Shows shape, position and movement':'Ukazuje tvar, polohu a pohyb',
+  'Both hands detected':'Obě ruce rozpoznány','Hand detected':'Ruka rozpoznána','Show both hands (0/2)':'Ukažte obě ruce (0/2)','Show both hands (1/2)':'Ukažte obě ruce (1/2)','Show your hand':'Ukažte ruku',
+  '2 hands':'2 ruce','1 hand':'1 ruka',
+  'Add Friend by Username':'Přidat přítele podle jména','Enter username...':'Zadejte uživatelské jméno…','Add':'Přidat',
+  'Authentication credentials were not provided.':'Nejprve se přihlaste, abyste mohli přidávat přátele.',
+  'Manage your user account, security and custom avatar.':'Spravujte účet, zabezpečení a profilový obrázek.',
+  'Account Settings':'Nastavení účtu','User Details & Custom Avatar':'Údaje uživatele a profilový obrázek',
+  'Your Name':'Vaše jméno','Email Address':'E-mailová adresa','Upload Custom Avatar Image':'Nahrát vlastní obrázek',
+  'Or Select Preset Icon':'Nebo vybrat připravenou ikonu','Custom Uploaded Image':'Nahraný obrázek',
+  'Default Profile':'Výchozí profil','New Password (optional)':'Nové heslo (volitelné)','Save settings':'Uložit nastavení','Sign out':'Odhlásit se',
+  'Learning overview':'Přehled výuky','Your ASL journey':'Váš pokrok v ASL','Full progress':'Celý pokrok',
+  'Recent signs':'Poslední znaky','Complete a lesson to see it here.':'Dokončete lekci a znaky se zobrazí zde.',
+  'Subscription & Plan':'Předplatné a tarif','Free Explorer':'Bezplatný tarif',
+  '👤 Default Profile':'👤 Výchozí profil','Four starter lessons and free translator previews.':'Čtyři úvodní lekce a zkušební překlad znaků.',
+  'Upgrade to Family ($10)':'Přejít na rodinný tarif ($10)',
+  'Squeeze hand open and closed as if milking a cow.':'Plynule svírejte a otevírejte pěst, jako při dojení.',
+  'Form W-shape with index, middle, ring finger at chin.':'Vytvořte ukazováčkem, prostředníčkem a prsteníčkem tvar W a dotkněte se ukazováčkem brady.',
+  'Bring flattened O-hand shape to mouth repeatedly.':'Vytvořte prsty ploché O a několikrát je přiložte k ústům.',
+  'Form C-shape with hand as if tipping a cup to mouth.':'Vytvořte rukou tvar C a nakloňte ji k ústům jako hrnek.',
+  'Tap thumb of open hand to chin.':'Otevřete dlaň a palcem se dotkněte brady.',
+  'Tap thumb of open hand to forehead.':'Otevřete dlaň a palcem se dotkněte čela.',
+  'Cradle arms side-to-side as if rocking a baby.':'Položte obě ruce jako při držení dítěte a jemně jimi kolébejte.',
+  'Place fist on open palm and lift up together.':'Položte pěst jedné ruky na otevřenou dlaň druhé a obě ruce zvedněte.',
+  'Rub flat open palm in circular motion on chest.':'Položte otevřenou dlaň na hruď a pohybujte jí v kruhu.',
+  'Touch fingers to chin and move hand forward towards person.':'Dotkněte se prsty brady a plynule posuňte ruku dopředu.',
+  'Nod S-hand shape up and down like a head nodding.':'Vytvořte pěst ve tvaru S a kývejte jí nahoru a dolů.',
+  'Snap index and middle finger together with thumb.':'Několikrát spojte ukazováček a prostředníček s palcem.',
+  'Tap fingertips of both hands together repeatedly.':'Spojte prsty obou rukou do špetky a několikrát se dotkněte konečky.',
+  'Flick open hands outward twice.':'Dvakrát otočte obě otevřené dlaně směrem ven.',
+  'Cross both fists over chest in an X shape.':'Překřižte obě pěsti na hrudi do tvaru X.',
+  'Pat open palm upward against chest repeatedly.':'Oběma otevřenými dlaněmi několikrát přejeďte vzhůru před hrudí a usmějte se.',
+  'Bring open hands down face while tilting head slightly.':'Veďte obě otevřené dlaně dolů před obličejem a mírně nakloňte hlavu.',
+  'Twist Y-hand shapes at wrist back and forth.':'Vytvořte oběma rukama tvar Y a otáčejte zápěstími.',
+  'Draw open hand down face closing into a flattened fist.':'Veďte otevřenou dlaň dolů před obličejem a postupně zavírejte prsty.',
+  'Chop edge of open hand down into flat palm.':'Veďte hranu jedné dlaně dolů k otevřené druhé dlani.',
+  'Reach out with clawed hands and pull inward.':'Natáhněte obě zahnuté ruce dopředu a přitáhněte je k sobě.'
+});
+
 const supported = ['en','ru','cs'];
+const lessonTips = {
+  ru: {
+    'Milk':'Плавно сжимайте и раскрывайте кулак, словно доите корову.',
+    'Water':'Сложите указательный, средний и безымянный пальцы в форму W и коснитесь указательным пальцем подбородка.',
+    'Eat / Food':'Сложите пальцы в плоскую форму O и несколько раз поднесите их ко рту.',
+    'Drink':'Сложите кисть в форму C и наклоните её ко рту, словно пьёте из чашки.',
+    'Apple':'Коснитесь щеки костяшкой указательного пальца и слегка поверните кисть.',
+    'Cookie':'Поверните согнутую кисть на ладони второй руки, словно вырезаете печенье.',
+    'Mother':'Раскройте ладонь и коснитесь большим пальцем подбородка.',
+    'Father':'Раскройте ладонь и коснитесь большим пальцем лба.',
+    'Baby / Child':'Сложите обе руки, словно держите ребёнка, и мягко покачайте их.',
+    'Brother':'Сложите обе кисти в форму L, опустите одну ото лба и соедините руки.',
+    'Sister':'Сложите обе кисти в форму L, опустите одну от подбородка и соедините руки.',
+    'Help':'Поставьте кулак одной руки на раскрытую ладонь другой и поднимите обе руки вместе.',
+    'Please':'Положите раскрытую ладонь на грудь и двигайте ею по кругу.',
+    'Thank You':'Коснитесь пальцами подбородка и плавно отведите ладонь вперёд.',
+    'Yes':'Сложите кулак и покачайте им вверх-вниз, словно киваете.',
+    'No':'Несколько раз сведите указательный и средний пальцы с большим.',
+    'More':'Соберите пальцы обеих рук в щепоть и несколько раз соедините кончики.',
+    'Finished / All Done':'Дважды разверните обе раскрытые ладони наружу.',
+    'Home':'Коснитесь собранными пальцами уголка рта, затем щеки.',
+    'Love':'Скрестите обе руки с кулаками на груди в форме X.',
+    'Happy':'Обеими раскрытыми ладонями проведите вверх перед грудью и улыбнитесь.',
+    'Sad':'Проведите обеими раскрытыми ладонями вниз перед лицом и слегка наклоните голову.',
+    'Play':'Сложите обе кисти в форму Y и поворачивайте их в запястьях.',
+    'Sleep':'Проведите ладонью вниз перед лицом, постепенно собирая пальцы.',
+    'Stop':'Ребром одной ладони сделайте движение вниз к раскрытой второй ладони.',
+    'Want':'Вытяните обе согнутые кисти вперёд и потяните их к себе.'
+  },
+  cs: {
+    'Milk':'Plynule svírejte a otevírejte pěst, jako při dojení.',
+    'Water':'Vytvořte ukazováčkem, prostředníčkem a prsteníčkem tvar W a dotkněte se brady.',
+    'More':'Spojte prsty obou rukou do špetky a několikrát se dotkněte konečky.',
+    'Help':'Položte pěst jedné ruky na otevřenou dlaň druhé a obě ruce zvedněte.',
+    'Happy':'Oběma otevřenými dlaněmi přejeďte vzhůru před hrudí a usmějte se.',
+    'Sad':'Veďte obě otevřené dlaně dolů před obličejem a mírně nakloňte hlavu.',
+    'Sleep':'Veďte dlaň dolů před obličejem a postupně zavírejte prsty.'
+  }
+};
+const lessonPositions = {
+  ru: {
+    'Milk':'Поднимите рабочую руку перед грудью, ладонь направьте в сторону.',
+    'Water':'Поднесите W-образную кисть к подбородку.',
+    'More':'Держите обе руки перед грудью на одной высоте.',
+    'Help':'Раскройте нижнюю ладонь вверх и поставьте на неё кулак второй руки.',
+    'Please':'Положите открытую ладонь плоско на центр груди.',
+    'Thank You':'Начните с кончиков пальцев у подбородка.',
+    'Yes':'Держите кулак перед плечом.',
+    'No':'Держите кисть перед собой примерно на уровне груди.'
+  },
+  cs: {
+    'Milk':'Zvedněte znakující ruku před hruď a otočte dlaň do strany.',
+    'Water':'Přiložte ruku ve tvaru W k bradě.',
+    'More':'Držte obě ruce před hrudí ve stejné výšce.',
+    'Help':'Otevřete spodní dlaň vzhůru a položte na ni pěst druhé ruky.'
+  },
+  en: {
+    'Milk':'Raise your signing hand in front of your chest with the palm facing sideways.',
+    'Water':'Bring the W handshape to your chin.',
+    'More':'Hold both hands at the same height in front of your chest.',
+    'Help':'Face the lower palm up and rest the other fist on it.'
+  }
+};
+const lessonMovements = {
+  ru: {
+    'Milk':'Два раза плавно раскройте ладонь и снова сожмите её в кулак.',
+    'Water':'Дважды легко коснитесь подбородка боковой стороной указательного пальца.',
+    'More':'Два раза соедините кончики пальцев обеих рук и немного разведите их.',
+    'Help':'Не меняя форму рук, плавно поднимите обе руки вместе на 10–15 см.',
+    'Please':'Сделайте ладонью один–два небольших круга по груди.',
+    'Thank You':'Плавно отведите ладонь от подбородка вперёд и немного вниз.',
+    'Yes':'Два раза наклоните кулак вниз и верните обратно, как при кивке.',
+    'No':'Два раза соедините указательный и средний пальцы с большим.'
+  },
+  cs: {
+    'Milk':'Dvakrát plynule otevřete dlaň a znovu ji sevřete v pěst.',
+    'Water':'Dvakrát se lehce dotkněte brady stranou ukazováčku.',
+    'More':'Dvakrát spojte konečky prstů obou rukou a mírně je oddalte.',
+    'Help':'Beze změny tvaru zvedněte obě ruce společně o 10–15 cm.'
+  },
+  en: {
+    'Milk':'Slowly open the hand and close it into a fist twice.',
+    'Water':'Lightly tap your chin twice with the side of the index finger.',
+    'More':'Touch both sets of fingertips together twice, separating them slightly each time.',
+    'Help':'Keep the handshapes and lift both hands together about 10–15 cm.'
+  }
+};
 const stored = localStorage.getItem('handsign_language');
 const fromUrl = new URLSearchParams(location.search).get('lang');
 let current = supported.includes(fromUrl) ? fromUrl : supported.includes(stored) ? stored : supported.find(code => navigator.language.toLowerCase().startsWith(code)) || 'en';
@@ -115,6 +319,9 @@ export const I18n = {
   get current(){ return current; },
   set(language){ if(supported.includes(language)){ current=language; localStorage.setItem('handsign_language',language); } },
   t: translate,
+  lessonTip(name, fallback){ return lessonTips[current]?.[name] || translate(fallback); },
+  lessonPosition(name, fallback){ return lessonPositions[current]?.[name] || translate(fallback); },
+  lessonMovement(name, fallback){ return lessonMovements[current]?.[name] || translate(fallback); },
   apply,
   supported
 };

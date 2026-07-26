@@ -22,6 +22,7 @@ class Word(models.Model):
     is_premium = models.BooleanField(default=False)
     # reference_landmarks stores an array of frames, each frame being an array of 21 landmark dicts/lists {"x": ..., "y": ..., "z": ...}
     reference_landmarks = models.JSONField(default=list, help_text="List of landmark frames for reference comparison")
+    unlock_requirement = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='unlocks')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -1,27 +1,34 @@
-import { Api } from './api.js?v=2';
-import { I18n } from './i18n.js?v=2';
+import { Api } from './api.js?v=5';
+import { I18n } from './i18n.js?v=5';
 
-const APP_ROUTES = new Set(['home', 'dashboard', 'library', 'progress', 'profile', 'practice', 'translate']);
+const APP_ROUTES = new Set(['home', 'dashboard', 'library', 'words', 'progress', 'leaderboard', 'profile', 'practice', 'translate']);
 const savedUser = (() => { try { return JSON.parse(localStorage.getItem('handsign_user')); } catch { return null; } })();
 const state = {
   route: routeFromHash(), cameraStream: null, lesson: 'Hello',
   recorder: null, recordedChunks: [], recordingStartedAt: 0,
   timerId: null, autoStopTimer: null, landmarkTimer: null, landmarkFrames: [], returnRoute: 'dashboard',
   user: savedUser || { name:'Alex Morgan', email:'alex@example.com' }, lastModalFocus:null,
-  referenceLandmarks: []
+  referenceLandmarks: [],
+  selectedWordsFilter: 'all',
+  selectedLessonsFilter: 'all',
+  leaderboardTimeframe: 'all_time',
+  leaderboardCountry: 'global'
 };
 
 const icons = {
   hand: `<svg viewBox="0 0 24 24" fill="none"><path d="M7.5 13V5.8a1.5 1.5 0 0 1 3 0V11m0-5.9a1.5 1.5 0 0 1 3 0V11m0-4.7a1.5 1.5 0 0 1 3 0V12m0-3.5a1.5 1.5 0 0 1 3 0v6.1c0 4-2.8 7.4-6.8 7.4h-1.3c-2.5 0-4.7-1.2-6-3.2L3 15.2a1.6 1.6 0 0 1 2.4-2l2.1 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   globe: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 3c2.2 2.45 3.25 5.45 3.25 9S14.2 18.55 12 21M12 3C9.8 5.45 8.75 8.45 8.75 12S9.8 18.55 12 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-  close: '×'
+  close: '×',
+  coin: `<svg viewBox="0 0 24 24" fill="none" style="width:1.2em;height:1.2em;display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1"/><path d="M12 9v6M10 11h4M10 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
 };
 
 const navIcons = {
   dashboard:`<svg viewBox="0 0 24 24" fill="none"><path d="m4 10 8-6 8 6v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
   library:`<svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v17H6.5A2.5 2.5 0 0 0 4 22V5.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v17h4.5A2.5 2.5 0 0 1 20 22V5.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
+  words: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" stroke="currentColor" stroke-width="1.8"/><path d="M12 11h5m-5 4h5M7 7h10M7 11h2m-2 4h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   translate:`<svg viewBox="0 0 24 24" fill="none"><path d="M7 7h10m0 0-3-3m3 3-3 3M17 17H7m0 0 3 3m-3-3 3-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   progress:`<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9m7 10V5m7 14v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  leaderboard:`<svg viewBox="0 0 24 24" fill="none"><path d="M8 21h8M12 17v4m-5-8a5 5 0 0 1 10 0v1H7v-1Zm0 0V8a5 5 0 0 1 10 0v5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
   profile:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
 };
 
@@ -33,35 +40,103 @@ const EMOJI_MAP = {
   'Happy': '😊', 'Sad': '😢', 'Play': '🎮', 'Sleep': '😴', 'Stop': '✋', 'Want': '🤲'
 };
 
-let lessons = [
-  { name:'Milk', emoji:'🥛', level:'Beginner', time:'3 min', score:'New' },
-  { name:'Water', emoji:'🚰', level:'Beginner', time:'4 min', score:'New' },
-  { name:'Mother', emoji:'👩', level:'Essential', time:'5 min', score:'New' },
-  { name:'Father', emoji:'👨', level:'Essential', time:'4 min', score:'New' }
-];
+const SKIN_TONE_MODIFIERS = {
+  default: '',
+  light: '🏻',
+  medium_light: '🏼',
+  medium: '🏽',
+  medium_dark: '🏾',
+  dark: '🏿'
+};
 
-async function fetchLessonsFromApi() {
+function applySkinTone(emoji) {
+  if (!state.user || !state.user.skin_tone) return emoji;
+  const tone = state.user.skin_tone || 'default';
+  const modifier = SKIN_TONE_MODIFIERS[tone] || '';
+  if (!modifier) return emoji;
+  
+  const modifiable = ['🤟', '👍', '👎', '✋', '🫴', '🙏', '👐', '🤚', '👶', '👩', '👨', '👦', '👧', '👋'];
+  if (modifiable.includes(emoji)) {
+    return emoji + modifier;
+  }
+  return emoji;
+}
+
+let lessons = [];
+let lessonsNextUrl = null;
+let fetchingLessons = false;
+
+async function fetchLessonsFromApi(url = null) {
+  if (fetchingLessons) return;
+  fetchingLessons = true;
   try {
-    const data = await Api.lessons();
+    const data = await Api.lessons(url);
     if (data.results && data.results.length > 0) {
-      lessons = data.results.map(w => ({
+      const newLessons = data.results.map(w => ({
         id: w.id,
         name: w.name,
-        emoji: EMOJI_MAP[w.name] || (w.name.startsWith('Letter') ? '🔤' : '🤟'),
+        emoji: applySkinTone(EMOJI_MAP[w.name] || (w.name.startsWith('Letter') ? '🔤' : '🤟')),
         level: w.level || (w.is_premium ? 'Essential' : 'Beginner'),
         time: w.time || '4 min',
         score: w.score || 'New',
-        video_url: w.video_url || ''
+        video_url: w.video_url || '',
+        category_name: w.category_name || ''
       }));
+      
+      if (url) {
+        lessons = [...lessons, ...newLessons];
+      } else {
+        lessons = newLessons;
+      }
+      lessonsNextUrl = data.next || null;
+
       const grid = document.querySelector('#libraryGrid');
       if (grid) {
-        grid.innerHTML = `<div class="lessons-grid library-lessons">${lessons.map(l=>`<article class="lesson-card" tabindex="0" role="button" data-lesson="${l.name}"><div class="lesson-visual"><span class="level">${l.level}</span>${l.emoji}</div><div class="lesson-info"><h3>${l.name}</h3><div class="lesson-meta"><span>◷ ${l.time}</span><span>${l.score}</span></div></div></article>`).join('')}</div>`;
+        grid.innerHTML = lessonCards('library-lessons');
         bindLessonCards();
+        setupLessonsInfiniteScroll();
+      }
+      
+      if (!url) {
+        const recContainer = document.querySelector('#dashboardRecommendedContainer');
+        if (recContainer) {
+          recContainer.innerHTML = recommendedWordCards();
+          bindLessonCards();
+        }
+        
+        const homeContainer = document.querySelector('#homeLessonsContainer');
+        if (homeContainer) {
+          homeContainer.innerHTML = lessonCards('', 4);
+          bindLessonCards();
+        }
       }
     }
   } catch (e) {
     console.info('Lessons fetch info:', e);
+  } finally {
+    fetchingLessons = false;
   }
+}
+
+function setupLessonsInfiniteScroll() {
+    let sentinel = document.querySelector('#lessonsSentinel');
+    if (!sentinel) {
+        sentinel = document.createElement('div');
+        sentinel.id = 'lessonsSentinel';
+        sentinel.style.height = '1px';
+        const grid = document.querySelector('#libraryGrid');
+        if (grid && grid.parentNode) grid.parentNode.insertBefore(sentinel, grid.nextSibling);
+    }
+    
+    if (window.lessonsObserver) window.lessonsObserver.disconnect();
+    if (!lessonsNextUrl) return;
+    
+    window.lessonsObserver = new IntersectionObserver(entries => {
+        if (entries[0].isIntersecting && lessonsNextUrl && !fetchingLessons) {
+            fetchLessonsFromApi(lessonsNextUrl);
+        }
+    }, { rootMargin: '200px' });
+    if (sentinel) window.lessonsObserver.observe(sentinel);
 }
 
 function isAuthenticated() {
@@ -89,7 +164,165 @@ function brand(){
 
 function nav(){ return `<header class="wrap nav">${brand()}<nav class="nav-links" aria-label="Primary navigation"><a href="#how" data-scroll="how">How it works</a><a href="#lessons" data-scroll="lessons">Lessons</a><button class="nav-link-button" data-route="translate">Free translate</button><a href="#pricing" data-scroll="pricing">Pricing</a></nav><div class="nav-actions">${preferenceControls()}<button class="btn btn-ghost" data-modal="login">Log in</button><button class="btn btn-dark nav-start" data-start>Start learning</button><button class="icon-btn mobile-menu" aria-label="Open menu" aria-controls="mobileDropdown" aria-expanded="false" data-mobile-menu>☰</button></div><div class="mobile-dropdown" id="mobileDropdown"><button data-scroll="how">How it works</button><button data-scroll="lessons">Lessons</button><button data-route="translate">Free translate</button><button data-scroll="pricing">Pricing</button><button data-modal="login">Log in</button></div></header>`; }
 
-function lessonCards(extra='', limit=lessons.length){ return `<div class="lessons-grid ${extra}">${lessons.slice(0,limit).map(l=>`<article class="lesson-card" tabindex="0" role="button" data-lesson="${l.name}"><div class="lesson-visual"><span class="level">${l.level}</span>${l.emoji}</div><div class="lesson-info"><h3>${l.name}</h3><div class="lesson-meta"><span>◷ ${l.time}</span><span>${l.score}</span></div></div></article>`).join('')}</div>`; }
+let lessonGroups = [];
+
+let sections = [];
+
+function groupLessons() {
+  lessonGroups = [];
+  const categories = {};
+  lessons.forEach(w => {
+    const catName = w.category_name || w.level || 'Základy a Komunikace (ASL)';
+    if (!categories[catName]) categories[catName] = [];
+    categories[catName].push(w);
+  });
+  
+  let lessonCounter = 1;
+  for (const catName in categories) {
+    const words = categories[catName];
+    for (let i = 0; i < words.length; i += 6) {
+      const chunk = words.slice(i, i + 6);
+      const isCompleted = chunk.every(w => w.score !== 'New' && parseInt(w.score, 10) >= 70);
+      const isAttempted = chunk.some(w => w.score !== 'New');
+      
+      lessonGroups.push({
+        id: lessonCounter++,
+        name: I18n.t('Lesson {num}').replace('{num}', lessonCounter - 1),
+        category: catName,
+        words: chunk,
+        isCompleted,
+        isAttempted
+      });
+    }
+  }
+
+  // Split lessonGroups into sections of 10 lessons each
+  sections = [];
+  for (let i = 0; i < lessonGroups.length; i += 10) {
+    sections.push({
+      id: Math.floor(i / 10) + 1,
+      name: `${I18n.t('Section')} ${Math.floor(i / 10) + 1}`,
+      lessons: lessonGroups.slice(i, i + 10)
+    });
+  }
+}
+
+function recommendedWordCards() {
+  const filtered = lessons.filter(l => {
+    const cat = (l.category_name || '').toLowerCase();
+    const name = l.name.toLowerCase();
+    return cat.includes('základ') || cat.includes('komunikace') || cat.includes('word') || ['milk', 'water', 'mother', 'father'].includes(name);
+  });
+  const targetList = filtered.length > 0 ? filtered : lessons;
+
+  const sortedForRecommendation = [...targetList].sort((a, b) => {
+    const aIsNew = a.score === 'New';
+    const bIsNew = b.score === 'New';
+    
+    const aScore = aIsNew ? -1 : parseInt(a.score, 10);
+    const bScore = bIsNew ? -1 : parseInt(b.score, 10);
+    
+    const aIsLowScore = aScore > -1 && aScore < 70;
+    const bIsLowScore = bScore > -1 && bScore < 70;
+    
+    if (aIsLowScore && !bIsLowScore) return -1;
+    if (!aIsLowScore && bIsLowScore) return 1;
+    
+    if (aIsNew && !bIsNew) return -1;
+    if (!aIsNew && bIsNew) return 1;
+    
+    return aScore - bScore;
+  });
+  
+  const items = sortedForRecommendation.slice(0, 4);
+  
+  return `
+    <div class="lessons-grid dashboard-lessons">
+      ${items.map(l => `
+        <article class="lesson-card" tabindex="0" role="button" data-lesson-word="${l.name}">
+          <div class="lesson-visual">
+            <span class="level">${l.level}</span>
+            ${l.emoji}
+          </div>
+          <div class="lesson-info">
+            <h3>${l.name}</h3>
+            <div class="lesson-meta">
+              <span>◷ ${l.time}</span>
+              <span>${l.score === 'New' ? I18n.t('New') : `${l.score}%`}</span>
+            </div>
+          </div>
+        </article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function lessonCards(extra='', limit=lessonGroups.length){
+  groupLessons();
+  
+  let html = `<div class="skill-tree ${extra}">`;
+  
+  sections.forEach((sec, secIdx) => {
+    if (state.selectedLessonsFilter && state.selectedLessonsFilter !== 'all' && state.selectedLessonsFilter !== `section-${sec.id}`) {
+      return;
+    }
+
+    html += `
+      <div class="section-banner" style="width:100%;text-align:center;margin:30px 0 20px;padding:16px;background:var(--forest);color:white;border-radius:18px;box-shadow:var(--shadow);">
+        <h2 style="font-size:20px;font-weight:800;margin:0;color:#fff;">${sec.name}</h2>
+        <span style="font-size:12px;opacity:0.95;">${sec.lessons.length} ${I18n.t('lessons')}</span>
+      </div>
+    `;
+    
+    let i = 0;
+    let rowIdx = 0;
+    while (i < sec.lessons.length) {
+      const isSingle = (rowIdx % 2 === 0);
+      const rowLessons = isSingle ? sec.lessons.slice(i, i+1) : sec.lessons.slice(i, i+2);
+      
+      html += `<div class="tree-node-wrapper" style="flex-direction:row; justify-content:center; gap:20px; align-items:center; margin-bottom:10px;">`;
+      
+      rowLessons.forEach((lg, localIdx) => {
+        const globalIdx = secIdx * 10 + i + localIdx;
+        const isFirst = globalIdx === 0;
+        const prevCompleted = isFirst || lessonGroups[globalIdx-1].isCompleted || lessonGroups[globalIdx-1].isAttempted;
+        const isLocked = !prevCompleted && !state.user.has_premium;
+        const lockIcon = isLocked ? ' 🔒' : '';
+        const opacityClass = isLocked ? 'locked-node' : '';
+        const completedCount = lg.words.filter(w => w.score !== 'New' && parseInt(w.score, 10) >= 70).length;
+        const progressPercent = Math.round((completedCount / lg.words.length) * 100);
+        
+        html += `
+          <article class="lesson-card tree-card ${opacityClass}" tabindex="${isLocked ? '-1' : '0'}" role="button" data-lesson-group="${lg.id}" ${isLocked ? 'style="pointer-events:none;opacity:0.65;filter:grayscale(1);"' : ''}>
+            <div class="lesson-visual">
+              <span class="level">${lg.category}</span>
+              📚
+            </div>
+            <div class="lesson-info">
+              <h3>${lg.name}${lockIcon}</h3>
+              <div class="lesson-meta">
+                <span>${lg.words.length} ${I18n.t('words')}</span>
+                <span>${progressPercent}% ${I18n.t('done')}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      });
+      
+      html += `</div>`;
+      
+      if (i + rowLessons.length < sec.lessons.length) {
+        html += `<div class="tree-connector" style="margin:0 auto 10px; height:32px; width:4px; background:var(--line); border-radius:4px;"></div>`;
+      }
+      
+      i += rowLessons.length;
+      rowIdx++;
+    }
+  });
+  
+  html += `</div>`;
+  return html;
+}
 
 function home(){ return `<div class="shell">${nav()}
   <main>
@@ -98,22 +331,25 @@ function home(){ return `<div class="shell">${nav()}
     <section class="logos"><div class="wrap">Designed to connect with<div class="logo-row"><span class="partner"><b>G</b> Google Cloud</span><span class="partner"><b>◇</b> MediaPipe</span><span class="partner"><b>✦</b> Gemini</span><span class="partner"><b>S</b> Stripe</span></div></div></section>
     <section id="how" class="section section-white"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Made for real life</span><h2>From camera on to confident in three simple steps.</h2></div><p class="section-sub">No special equipment or prior experience. HandSign works right in your browser and meets you where you are.</p></div><div class="steps"><article class="step"><span class="step-no">01 — PICK</span><span class="step-icon">☝️</span><h3>Choose a useful word</h3><p>Start with what your family needs today — from “more” and “milk” to feelings and routines.</p></article><article class="step"><span class="step-no">02 — PRACTICE</span><span class="step-icon">🤟</span><h3>Sign to your camera</h3><p>Our hand tracking follows your movement privately, directly in your browser, in real time.</p></article><article class="step"><span class="step-no">03 — CONNECT</span><span class="step-icon">✨</span><h3>Get kind, clear feedback</h3><p>Receive specific coaching on hand shape, placement and motion — then celebrate your progress.</p></article></div></div></section>
     <section class="translator-banner"><div class="wrap translator-banner-inner"><div><span class="eyebrow">Free sign translator</span><h2>Show it. We’ll put it into words.</h2><p>Turn on your camera, sign naturally, and get a text translation you can copy or hear aloud.</p></div><button class="btn btn-lime" data-route="translate">Open free translator →</button></div></section>
-    <section id="lessons" class="section"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Explore lessons</span><h2>Start with words that open doors.</h2></div><button class="btn btn-ghost" data-route="library">View all lessons →</button></div>${lessonCards('',4)}</div></section>
+    <section id="lessons" class="section"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Explore lessons</span><h2>Start with words that open doors.</h2></div><button class="btn btn-ghost" data-route="library">View all lessons →</button></div><div id="homeLessonsContainer">${lessons.length === 0 ? skeletonRecommendedCards() : lessonCards('',4)}</div></div></section>
     <section id="stories" class="quote"><div class="wrap quote-inner"><div class="quote-portrait">👩🏽<span class="quote-bubble">Day 18 · 12 signs learned</span></div><div><span class="eyebrow">A little win, a huge moment</span><blockquote>“The first time Leo signed ‘more’ at dinner, we both understood each other without a meltdown. I cried happy tears.”</blockquote><cite><strong>Maya & Leo</strong><br>HandSign pilot family</cite></div></div></section>
     <section id="pricing" class="cta"><div class="wrap cta-box"><span class="eyebrow">Your first lesson is free</span><h2>A new way to understand each other starts here.</h2><p>Five minutes, one useful sign, and supportive feedback. No credit card required.</p><button class="btn btn-dark" data-start>Try HandSign free →</button></div></section>
   </main><footer class="footer"><div class="wrap footer-inner">${brand()}<span>© 2026 HandSign. <span>Built with care for every communicator.</span></span><span class="footer-links"><button data-info="privacy">Privacy</button><button data-info="accessibility">Accessibility</button><button data-info="support">Support</button></span></div></footer></div>`; }
 
 const sideItems = [
-  ['dashboard','Home'], ['library','Lessons'], ['translate','Translate'],
-  ['progress','Progress'], ['profile','Profile']
+  ['dashboard','Home'], ['library','Lessons'], ['words','Words'], ['translate','Translate'],
+  ['progress','Progress'], ['leaderboard','Leaderboard'], ['profile','Profile']
 ];
-function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${label}</span></button>`).join('')}</nav><button class="side-footer" data-route="progress"><b>0 day streak 🔥</b><p>Practice one lesson today to keep it going.</p></button></aside>`;}
+function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${I18n.t(label)}</span></button>`).join('')}</nav><button class="side-footer" data-route="progress"><b>0 day streak 🔥</b><p>${I18n.t('Practice one word today to keep it going.')}</p></button></aside>`;}
 function appHeader(title,subtitle){
   const avatar = state.user.avatar || '';
   const isImage = avatar.startsWith('data:image') || avatar.startsWith('http');
   const userAvatarHtml = isImage
     ? `<img src="${avatar}" alt="Avatar">`
     : `<span>${avatar || '👤'}</span>`;
+
+  const userLevel = Math.floor((state.user.xp || 0) / 100) + 1;
+  const userXpInLevel = (state.user.xp || 0) % 100;
 
   return `
     <header class="app-top">
@@ -124,6 +360,12 @@ function appHeader(title,subtitle){
       <div class="user-row">
         ${preferenceControls()}
         <span class="streak">🔥 0 day streak</span>
+        <button class="coin-badge" id="openShopBtn" title="Shop" style="display:inline-flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line);padding:6px 12px;border-radius:99px;font-weight:bold;cursor:pointer;color:var(--ink);">
+          ${icons.coin} <span id="headerCoinCount">${state.user.coins || 0}</span>
+        </button>
+        <div class="level-badge" title="XP: ${userXpInLevel}/100" style="display:inline-flex;align-items:center;background:var(--forest);color:#fff;padding:6px 12px;border-radius:99px;font-weight:bold;font-size:13px;height:36px;">
+          Lvl ${userLevel}
+        </div>
         <div class="profile-dropdown-wrapper" style="position:relative;">
           <button class="profile-trigger" aria-label="Open user menu" data-profile-toggle>
             ${userAvatarHtml}
@@ -148,10 +390,103 @@ function appHeader(title,subtitle){
 function appShell(content,title,subtitle){return `<div class="app-layout">${sidebar()}<main class="app-main">${appHeader(title,subtitle)}${content}</main></div>`;}
 function immersiveShell(content){return `<div class="app-layout immersive-layout">${sidebar()}<div class="immersive-main">${content}</div></div>`;}
 
-function dashboard(){const firstName=escapeHtml(state.user.name?.split(' ')[0]||'Alex');const greeting=`${I18n.t('Good morning')}, ${firstName} 👋`;return appShell(`<div class="dash-grid"><section class="continue"><span class="eyebrow">Continue learning</span><h2>Everyday essentials</h2><p>Lesson 3 of 8 · You're learning words that make daily routines easier.</p><div class="progress"><i style="width:37%"></i></div><button class="btn btn-lime" data-lesson="More">Continue lesson →</button></section><section class="stat-card"><span class="eyebrow">Weekly goal</span><div class="stat-ring"><strong>5 / 7</strong></div><p style="text-align:center;color:var(--muted);font-size:13px">Two more days to reach your goal</p></section></div><section class="dashboard-section"><div class="dashboard-title"><h2>Recommended for you</h2><button class="btn btn-ghost small-btn" data-route="library">See all</button></div>${lessonCards('dashboard-lessons',4)}</section>`,greeting,'Ready for one small step forward?');}
-function library(){return appShell(`<div class="filter-row"><button class="filter active" data-filter="all">All lessons</button><button class="filter" data-filter="Beginner">Beginner</button><button class="filter" data-filter="Essential">Essential</button><button class="filter" data-filter="Everyday">Everyday</button></div><div id="libraryGrid">${lessonCards('library-lessons')}</div>`,'Lesson library','Practical signs, organized into small and friendly lessons.');}
-function progressPage(){return appShell(`<div class="metric-grid"><article class="metric"><span>Signs learned</span><strong>0</strong><small id="metricCompletedSub">Completed lessons</small></article><article class="metric"><span>Average accuracy</span><strong>0%</strong><small id="metricAccuracySub">Based on attempts</small></article><article class="metric"><span>Practice time</span><strong>0m</strong><small id="metricTimeSub">Across 0 attempts</small></article></div><section class="progress-panel"><div class="dashboard-title"><h2>Your week</h2><span class="muted">Goal: 5 minutes a day</span></div><div class="week-bars">${['M','T','W','T','F','S','S'].map((d,i)=>`<div><i style="height:${[55,82,45,92,68,30,15][i]}%"></i><span>${d}</span></div>`).join('')}</div></section><section class="progress-panel"><div class="dashboard-title"><h2>Friends & Community</h2><span class="muted">Connect with others to compare streaks!</span></div><div class="social-grid"><div class="social-column"><h3>Active Streaks</h3><div id="friendsList" class="friends-list-container"><p class="muted small-msg">Loading friends...</p></div></div><div class="social-column"><div class="social-subcolumn" id="pendingRequestsContainer" style="display:none;margin-bottom:20px"><h3>Pending Invites</h3><div id="pendingRequestsList"></div></div><h3>Suggested for You</h3><div id="suggestionsList" class="suggestions-list-container"><p class="muted small-msg">Loading suggestions...</p></div><div class="add-friend-box" style="margin-top:20px"><h3>Add Friend by Username</h3><div class="search-bar"><input type="text" id="addFriendUsernameInput" placeholder="Enter username..."><button class="btn btn-lime small-btn" id="addFriendSubmitBtn">Add</button></div><p id="addFriendStatusMsg" class="status-msg" style="display:none;font-size:12px;margin-top:5px"></p></div></div></div></section>`,'Your progress','Every practice session is a meaningful step.');}
+function skeletonRecommendedCards() {
+  return `
+    <div class="lessons-grid dashboard-lessons">
+      ${[1, 2, 3, 4].map(() => `
+        <article class="lesson-card skeleton-pulse" style="width:240px;height:140px;background:var(--line);border:0;opacity:0.35;flex:0 0 240px;margin-bottom:12px;border-radius:24px;"></article>
+      `).join('')}
+    </div>
+  `;
+}
+
+function dashboard(){const firstName=escapeHtml(state.user.name?.split(' ')[0]||'Alex');const greeting=`${I18n.t('Good morning')}, ${firstName} 👋`;return appShell(`<div class="dash-grid"><section class="continue"><span class="eyebrow">Continue learning</span><h2>Everyday essentials</h2><p>Word 3 of 8 · You're learning words that make daily routines easier.</p><div class="progress"><i style="width:37%"></i></div><button class="btn btn-lime" data-lesson="More">Continue practicing →</button></section><section class="stat-card"><span class="eyebrow">Weekly goal</span><div class="stat-ring"><strong>5 / 7</strong></div><p style="text-align:center;color:var(--muted);font-size:13px">Two more days to reach your goal</p></section></div><section class="dashboard-section"><div class="dashboard-title"><h2>Recommended for you</h2><button class="btn btn-ghost small-btn" data-route="library">See all</button></div><div id="dashboardRecommendedContainer">${skeletonRecommendedCards()}</div></section>`,greeting,'Ready for one small step forward?');}
+function skeletonLessonCards() {
+  return `
+    <div class="skill-tree library-lessons">
+      ${[1, 2, 3].map(() => `
+        <div class="tree-node-wrapper align-center">
+          <div class="skeleton" style="width:280px;height:120px;margin-bottom:12px;border-radius:14px;opacity:0.4;"></div>
+          <div class="tree-connector" style="opacity:0.3;height:24px;"></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+function library(){
+  groupLessons();
+  const filterHtml = `
+    <div class="filter-bar" style="display:flex;gap:10px;margin-bottom:20px;overflow-x:auto;padding-bottom:8px;">
+      <button class="btn btn-ghost small-btn ${state.selectedLessonsFilter === 'all' ? 'active' : ''}" data-lessons-filter="all">${I18n.t('All')}</button>
+      ${sections.map(s => {
+        const activeClass = state.selectedLessonsFilter === `section-${s.id}` ? 'active' : '';
+        return `<button class="btn btn-ghost small-btn ${activeClass}" data-lessons-filter="section-${s.id}">${s.name}</button>`;
+      }).join('')}
+    </div>
+  `;
+  return appShell(`
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">${I18n.t('Explore lessons')}</span>
+        <h2>${I18n.t('Start with words that open doors.')}</h2>
+      </div>
+    </div>
+    ${filterHtml}
+    <div id="libraryGrid">${lessonCards('library-lessons')}</div>
+  `, I18n.t('Lessons'), I18n.t('Practical signs, organized into small and friendly lessons.'));
+}
+
+function wordsPage() {
+  const levels = ['all', 'Beginner', 'Intermediate', 'Essential'];
+  
+  const filterHtml = `
+    <div class="filter-bar" style="display:flex;gap:10px;margin-bottom:20px;overflow-x:auto;padding-bottom:8px;">
+      ${levels.map(lvl => {
+        const label = lvl === 'all' ? I18n.t('All') : I18n.t(lvl);
+        const activeClass = state.selectedWordsFilter === lvl ? 'active' : '';
+        return `<button class="btn btn-ghost small-btn ${activeClass}" data-words-filter="${lvl}">${label}</button>`;
+      }).join('')}
+    </div>
+  `;
+  
+  const filteredWords = lessons
+    .filter(l => state.selectedWordsFilter === 'all' || l.level === state.selectedWordsFilter)
+    .sort((a, b) => a.name.localeCompare(b.name));
+    
+  const gridHtml = `
+    <div class="lessons-grid">
+      ${filteredWords.map(w => `
+        <article class="lesson-card" tabindex="0" role="button" data-lesson-word="${w.name}">
+          <div class="lesson-visual" style="height:120px;font-size:48px;">
+            <span class="level">${I18n.t(w.level)}</span>
+            ${w.emoji}
+          </div>
+          <div class="lesson-info" style="padding:12px;">
+            <h3 style="font-size:16px;margin:0;">${w.name}</h3>
+            <div class="lesson-meta" style="margin-top:6px;">
+              <span>◷ ${w.time}</span>
+              <span>${w.score === 'New' ? I18n.t('New') : `${w.score}%`}</span>
+            </div>
+          </div>
+        </article>
+      `).join('')}
+    </div>
+  `;
+  
+  return appShell(`
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">${I18n.t('Word library')}</span>
+        <h2>${I18n.t('All words sorted alphabetically')}</h2>
+      </div>
+    </div>
+    ${filterHtml}
+    <div id="wordsGrid">${gridHtml}</div>
+  `, I18n.t('Words'), I18n.t('Practice any word directly'));
+}
+function progressPage(){return appShell(`<div class="metric-grid"><article class="metric"><span>Signs learned</span><strong class="skeleton-text">...</strong><small id="metricCompletedSub">Completed lessons</small></article><article class="metric"><span>Average accuracy</span><strong class="skeleton-text">...</strong><small id="metricAccuracySub">Based on attempts</small></article><article class="metric"><span>Practice time</span><strong class="skeleton-text">...</strong><small id="metricTimeSub">Across 0 attempts</small></article></div><section class="progress-panel"><div class="dashboard-title"><h2>Your week</h2><span class="muted">Goal: 5 minutes a day</span></div><div class="week-bars">${['M','T','W','T','F','S','S'].map((d,i)=>`<div><i style="height:${[55,82,45,92,68,30,15][i]}%"></i><span>${d}</span></div>`).join('')}</div></section><section class="progress-panel"><div class="dashboard-title"><h2>Friends & Community</h2><span class="muted">Connect with others to compare streaks!</span></div><div class="social-grid"><div class="social-column"><h3>Active Streaks</h3><div id="friendsList" class="friends-list-container"><p class="muted small-msg">Loading friends...</p></div></div><div class="social-column"><div class="social-subcolumn" id="pendingRequestsContainer" style="display:none;margin-bottom:20px"><h3>Pending Invites</h3><div id="pendingRequestsList"></div></div><h3>Suggested for You</h3><div id="suggestionsList" class="suggestions-list-container"><p class="muted small-msg">Loading suggestions...</p></div><div class="add-friend-box" style="margin-top:20px"><h3>Add Friend by Username</h3><div class="search-bar"><input type="text" id="addFriendUsernameInput" placeholder="Enter username..."><button class="btn btn-lime small-btn" id="addFriendSubmitBtn">Add</button></div><p id="addFriendStatusMsg" class="status-msg" style="display:none;font-size:12px;margin-top:5px"></p></div></div></div></section>`,'Your progress','Every practice session is a meaningful step.');}
 function profilePage(){
+  const t = I18n.t;
   const isSubscribed = state.user.is_subscribed;
   const avatar = state.user.avatar || '👤';
   const isCustomImage = avatar.startsWith('data:image') || avatar.startsWith('http');
@@ -176,23 +511,23 @@ function profilePage(){
       </section>
 
       <section class="settings-card">
-        <span class="eyebrow">Account Settings</span>
-        <h2>User Details & Custom Avatar</h2>
+        <span class="eyebrow">${t('AccountSettings') || 'Account Settings'}</span>
+        <h2>${t('UserDetailsCustomAvatar') || 'User Details & Custom Avatar'}</h2>
         <form class="api-form" id="userSettingsForm">
-          <label class="field">Your Name
+          <label class="field">${t('YourName') || 'Your Name'}
             <input id="userNameInput" type="text" value="${escapeHtml(state.user.name)}" required>
           </label>
-          <label class="field">Email Address
+          <label class="field">${t('EmailAddress') || 'Email Address'}
             <input id="userEmailInput" type="email" value="${escapeHtml(state.user.email)}" required>
           </label>
           
-          <label class="field">Upload Custom Avatar Image
+          <label class="field">${t('UploadCustomAvatarImage') || 'Upload Custom Avatar Image'}
             <input id="userAvatarFileInput" type="file" accept="image/*" style="padding:10px;width:100%;">
           </label>
 
-          <label class="field">Or Select Preset Icon
+          <label class="field">${t('OrSelectPresetIcon') || 'Or Select Preset Icon'}
             <select id="userAvatarInput" style="width:100%;padding:10px;font-size:16px;">
-              <option value="" ${isCustomImage?'selected':''}>Custom Uploaded Image</option>
+              <option value="" ${isCustomImage?'selected':''}>${t('CustomUploadedImage') || 'Custom Uploaded Image'}</option>
               <option value="👤" ${avatar==='👤'?'selected':''}>👤 Default Profile</option>
               <option value="👩" ${avatar==='👩'?'selected':''}>👩 Woman</option>
               <option value="👨" ${avatar==='👨'?'selected':''}>👨 Man</option>
@@ -204,8 +539,30 @@ function profilePage(){
             </select>
           </label>
           <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;">
-            <label class="field">New Password (optional)
-              <input id="userNewPasswordInput" type="password" placeholder="At least 6 characters" minlength="6">
+            <h3 style="margin-bottom:8px;">${t('AdvancedSettings') || 'Advanced Settings'}</h3>
+            <label class="field">${t('Country') || 'Country'}
+              <input id="userCountryInput" type="text" value="${escapeHtml(state.user.country || '')}" placeholder="e.g. Czech Republic">
+            </label>
+            <label class="field">${t('Pronouns') || 'Pronouns'}
+              <input id="userPronounsInput" type="text" value="${escapeHtml(state.user.pronouns || '')}" placeholder="e.g. he/him, they/them">
+            </label>
+            <label class="field">${t('SkinTonePreference') || 'Skin Tone Preference'}
+              <select id="userSkinToneInput" style="width:100%;padding:10px;font-size:16px;">
+                <option value="default" ${state.user.skin_tone==='default'?'selected':''}>${t('ToneDefault') || 'Default'} 🤟</option>
+                <option value="light" ${state.user.skin_tone==='light'?'selected':''}>${t('ToneLight') || 'Light'} 🤟🏻</option>
+                <option value="medium_light" ${state.user.skin_tone==='medium_light'?'selected':''}>${t('ToneMediumLight') || 'Medium-Light'} 🤟🏼</option>
+                <option value="medium" ${state.user.skin_tone==='medium'?'selected':''}>${t('ToneMedium') || 'Medium'} 🤟🏽</option>
+                <option value="medium_dark" ${state.user.skin_tone==='medium_dark'?'selected':''}>${t('ToneMediumDark') || 'Medium-Dark'} 🤟🏾</option>
+                <option value="dark" ${state.user.skin_tone==='dark'?'selected':''}>${t('ToneDark') || 'Dark'} 🤟🏿</option>
+              </select>
+            </label>
+          </div>
+          <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;">
+            <label class="field">${t('Daily Goal (minutes)') || 'Daily Goal (minutes)'}
+              <input id="userGoalInput" type="number" min="1" max="120" value="${escapeHtml(state.user.daily_goal_minutes || 5)}">
+            </label>
+            <label class="field">${t('New Password (optional)') || 'New Password (optional)'}
+              <input id="userNewPasswordInput" type="password" placeholder="${t('At least 6 characters') || 'At least 6 characters'}" minlength="6">
             </label>
           </div>
           <div class="button-row" style="margin-top:12px;">
@@ -235,6 +592,95 @@ function modal(type){
     accessibility:['Accessibility','Keyboard navigation, visible focus states and readable contrast are included. Add signed video alternatives with your lesson content.'],
     support:['We’re here to help','If the camera is not working, check browser permissions first. Account and billing support can be connected to your support desk before public launch.']
   };
+  if(type==='onboarding'){
+    return `
+      <div class="modal-backdrop" id="modal" style="z-index:2000;">
+        <section class="modal onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(580px,100%);">
+          <div id="onboardingWizardContent">
+            <span class="eyebrow">HandSign · ${I18n.t('Welcome!')}</span>
+            <h2 id="modalTitle">${I18n.t('What is your sign language knowledge?')}</h2>
+            <p>${I18n.t('We will help you customize your learning. Choose one option:')}</p>
+            <div style="display:flex;flex-direction:column;gap:12px;margin:20px 0;">
+              <button class="btn btn-dark" id="onboardingNoKnowledgeBtn" style="padding:16px;text-align:left;display:block;width:100%;">
+                <strong>${I18n.t('I have no knowledge')}</strong><br>
+                <span style="font-size:12px;font-weight:normal;opacity:0.8;">${I18n.t('You will start from absolute basics and simplest words.')}</span>
+              </button>
+              <button class="btn btn-lime" id="onboardingHasKnowledgeBtn" style="padding:16px;text-align:left;display:block;width:100%;">
+                <strong>${I18n.t('I have some knowledge')}</strong><br>
+                <span style="font-size:12px;font-weight:normal;opacity:0.8;">${I18n.t('You will launch a short placement quiz to determine your level.')}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+  if(type==='shop'){
+    return `
+      <div class="modal-backdrop" id="modal">
+        <section class="modal shop-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(480px,100%);">
+          <button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button>
+          <span class="eyebrow">HandSign · ${I18n.t('Shop')}</span>
+          <h2 id="modalTitle">${I18n.t('Coin Shop')} ${icons.coin}</h2>
+          <p>${I18n.t('Collect coins for successful practice and unlock premium benefits!')}</p>
+          <div style="background:var(--bg-subtle);border-radius:14px;padding:16px;text-align:center;margin:15px 0;">
+            <span style="font-size:14px;color:var(--muted);display:block;">${I18n.t('Your coins')}</span>
+            <strong style="font-size:32px;display:block;margin-top:4px;">${icons.coin} ${state.user.coins || 0}</strong>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:15px;margin-top:15px;">
+            <div style="display:flex;justify-content:between;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;">
+              <div style="flex:1;">
+                <strong style="display:block;">${I18n.t('24 hours Premium Access')}</strong>
+                <span style="font-size:12px;color:var(--muted);display:block;margin-top:2px;">${I18n.t('Unlocks all videos and Gemini AI for 24 hours.')}</span>
+              </div>
+              <button class="btn btn-lime small-btn" id="buyPremiumShopBtn" style="padding:10px 16px;font-weight:bold;display:inline-flex;align-items:center;gap:4px;">
+                500 ${icons.coin}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+  if(type==='lesson-detail'){
+    const lg = lessonGroups.find(x => x.id === state.selectedLessonGroupId);
+    if (!lg) return '';
+    return `
+      <div class="modal-backdrop" id="modal" style="z-index:2000;">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(520px,100%);">
+          <button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button>
+          <span class="eyebrow">${lg.category}</span>
+          <h2 id="modalTitle">${lg.name}</h2>
+          <p>${I18n.t('Choose a word to practice:')}</p>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:15px;max-height:350px;overflow-y:auto;padding-right:4px;">
+            ${lg.words.map((w, idx) => {
+              const isFirstWord = idx === 0;
+              const prevWordDone = isFirstWord || (lg.words[idx-1].score !== 'New');
+              const isWordLocked = !prevWordDone && !state.user.has_premium;
+              const wordLockIcon = isWordLocked ? ' 🔒' : '';
+              
+              return `
+                <div class="word-list-row" data-word-practice="${w.name}" ${isWordLocked ? 'style="opacity:0.5;pointer-events:none;"' : 'style="cursor:pointer;"'}>
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);justify-content:space-between;width:100%;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                      <span style="font-size:24px;">${w.emoji}</span>
+                      <div>
+                        <strong style="display:block;">${w.name}${wordLockIcon}</strong>
+                        <span style="font-size:12px;color:var(--muted);">${w.level}</span>
+                      </div>
+                    </div>
+                    <span class="streak-badge" style="font-size:12px;background:var(--bg-subtle);border-color:var(--line);color:var(--ink);">
+                      ${w.score === 'New' ? I18n.t('New') : `${w.score}%`}
+                    </span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </section>
+      </div>
+    `;
+  }
   if(type==='video'){
     const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
     return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(560px,100%);"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign · Video Tutorial</span><h2 id="modalTitle">${escapeHtml(l.name)}</h2><div class="lesson-video-container"><video src="${l.video_url}" autoplay loop controls playsinline style="width:100%;aspect-ratio:16/9;border-radius:16px;background:#000;border:1px solid var(--line);object-fit:cover;margin:15px 0;"></video></div><button class="btn btn-dark" data-close>I'm Ready / Start Lesson</button></section></div>`;
@@ -244,15 +690,147 @@ function modal(type){
   return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">Welcome to HandSign</span><h2 id="modalTitle">${type==='login'?'Good to see you again.':'Let’s learn your first sign.'}</h2><p>${type==='login'?'Continue right where you left off.':'Create your free account — no credit card needed.'}</p><form class="form" id="authForm" data-auth-type="${type}">${type==='login'?'':`<label class="field">Your name<input name="name" required placeholder="Alex"></label>`}<label class="field">Email address<input name="email" required type="email" placeholder="you@example.com"></label><label class="field">Password<input name="password" required type="password" minlength="6" placeholder="At least 6 characters"></label><button class="btn btn-dark" type="submit">${type==='login'?'Log in':'Create free account'} →</button></form></section></div>`;
 }
 
+function leaderboardPage() {
+    return appShell(`
+      <div class="leaderboard-panel" style="max-width:800px; margin:0 auto; padding: 20px 10px;">
+        <div class="dashboard-title" style="margin-bottom:20px;">
+          <h2>${I18n.t('Leaderboard')}</h2>
+          <p class="muted">${I18n.t('See how you stack up against the community!')}</p>
+        </div>
+        
+        <div class="filters" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; align-items:center;">
+          <div class="filter-group">
+            <select id="leaderboardTimeframeSelect" class="input" style="padding:8px 12px; border-radius:12px; border:1px solid var(--line); background:var(--white); color:var(--ink);">
+              <option value="all_time" ${state.leaderboardTimeframe === 'all_time' ? 'selected' : ''}>${I18n.t('All Time')}</option>
+              <option value="month" ${state.leaderboardTimeframe === 'month' ? 'selected' : ''}>${I18n.t('This Month')}</option>
+              <option value="week" ${state.leaderboardTimeframe === 'week' ? 'selected' : ''}>${I18n.t('This Week')}</option>
+              <option value="today" ${state.leaderboardTimeframe === 'today' ? 'selected' : ''}>${I18n.t('Today')}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <select id="leaderboardCountrySelect" class="input" style="padding:8px 12px; border-radius:12px; border:1px solid var(--line); background:var(--white); color:var(--ink);">
+              <option value="global">${I18n.t('Global')}</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="leaderboardContainer" style="background:var(--white); border-radius:24px; border:1px solid var(--line); overflow:hidden; box-shadow:var(--shadow);">
+          <div style="padding:40px; text-align:center;" class="muted">${I18n.t('Loading leaderboard...')}</div>
+        </div>
+      </div>
+    `, I18n.t('Leaderboard'), I18n.t('Compete and learn together.'));
+  }
+
+  let leaderboardDataList = [];
+  let leaderboardNextUrl = null;
+  let fetchingLeaderboard = false;
+
+  async function hydrateLeaderboard(url = null) {
+    if (fetchingLeaderboard) return;
+    fetchingLeaderboard = true;
+    // Fetch countries
+    try {
+      const countries = await Api.getCountries();
+      const cSelect = document.getElementById('leaderboardCountrySelect');
+      if (cSelect && countries.length > 0) {
+        cSelect.innerHTML = `<option value="global">${I18n.t('Global')}</option>` + 
+          countries.map(c => `<option value="${escapeHtml(c)}" ${state.leaderboardCountry === c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+      }
+    } catch(e) {}
+
+    const container = document.getElementById('leaderboardContainer');
+    if (!container) return;
+    
+    try {
+      const data = await Api.getLeaderboard(state.leaderboardTimeframe, state.leaderboardCountry, url);
+      const newPlayers = data.results || data || [];
+      
+      if (url) {
+        leaderboardDataList = [...leaderboardDataList, ...newPlayers];
+      } else {
+        leaderboardDataList = newPlayers;
+      }
+      leaderboardNextUrl = data.next || null;
+
+      if (!leaderboardDataList || leaderboardDataList.length === 0) {
+        container.innerHTML = `<div style="padding:40px; text-align:center;" class="muted">${I18n.t('No players found for this filter.')}</div>`;
+        return;
+      }
+      
+      let html = `<table style="width:100%; border-collapse:collapse; text-align:left;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--line); background:var(--bg-subtle);">
+            <th style="padding:16px; font-weight:600; width:50px; text-align:center;">#</th>
+            <th style="padding:16px; font-weight:600;">${I18n.t('Player')}</th>
+            <th style="padding:16px; font-weight:600; text-align:right;">${I18n.t('XP')}</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardTbody">
+      `;
+      
+      leaderboardDataList.forEach((p, i) => {
+        const isMe = state.user && state.user.username === p.username;
+        const rankColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+        const rankStyle = i < 3 ? `color:${rankColors[i]}; font-size:20px; font-weight:800;` : 'font-weight:600; color:var(--muted);';
+        const bg = isMe ? 'background:var(--bg-subtle);' : '';
+        
+        html += `
+          <tr style="border-bottom:1px solid var(--line); ${bg}">
+            <td style="padding:16px; text-align:center; ${rankStyle}">${i + 1}</td>
+            <td style="padding:16px; display:flex; align-items:center; gap:12px;">
+              <span style="font-size:24px;">${applySkinTone(p.avatar || '👤')}</span>
+              <div>
+                <strong style="display:block; font-size:16px; color:var(--ink);">${escapeHtml(p.username)} ${isMe ? '(You)' : ''}</strong>
+                ${p.country ? `<span style="font-size:12px; color:var(--muted);">${escapeHtml(p.country)}</span>` : ''}
+              </div>
+            </td>
+            <td style="padding:16px; text-align:right; font-weight:700; color:var(--forest); font-size:16px;">${p.xp}</td>
+          </tr>
+        `;
+      });
+      
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+      setupLeaderboardInfiniteScroll();
+      
+    } catch(e) {
+      container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--error);">${I18n.t('Failed to load leaderboard.')}</div>`;
+    } finally {
+      fetchingLeaderboard = false;
+    }
+  }
+
+  function setupLeaderboardInfiniteScroll() {
+      let sentinel = document.querySelector('#leaderboardSentinel');
+      if (!sentinel) {
+          sentinel = document.createElement('div');
+          sentinel.id = 'leaderboardSentinel';
+          sentinel.style.height = '1px';
+          const container = document.querySelector('#leaderboardContainer');
+          if (container && container.parentNode) container.parentNode.insertBefore(sentinel, container.nextSibling);
+      }
+      
+      if (window.leaderboardObserver) window.leaderboardObserver.disconnect();
+      if (!leaderboardNextUrl) return;
+      
+      window.leaderboardObserver = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting && leaderboardNextUrl && !fetchingLeaderboard) {
+              hydrateLeaderboard(leaderboardNextUrl);
+          }
+      }, { rootMargin: '200px' });
+      if (sentinel) window.leaderboardObserver.observe(sentinel);
+  }
+
 function render(){
   stopCamera();
-  const views = { home, dashboard, library, progress:progressPage, profile:profilePage, practice, translate:translatePage };
+  const views = { home, dashboard, library, words: wordsPage, progress:progressPage, leaderboard:leaderboardPage, profile:profilePage, practice, translate:translatePage };
   document.querySelector('#app').innerHTML = (views[state.route] || home)();
   I18n.apply(document.querySelector('#app')); bind(); window.scrollTo(0,0);
   fetchLessonsFromApi();
   if(state.route!=='home' && state.route!=='') updateGlobalStreak();
   if(state.route==='dashboard') hydrateDashboard();
   if(state.route==='progress') hydrateProgressPage();
+  if(state.route==='leaderboard') hydrateLeaderboard();
   if(state.route==='practice'){
     const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
     if(l){
@@ -261,6 +839,9 @@ function render(){
       }
       loadLessonReference(l.id);
     }
+  }
+  if (isAuthenticated() && state.user && state.user.onboarding_completed === false && state.route === 'dashboard') {
+    setTimeout(() => showModal('onboarding'), 400);
   }
 }
 
@@ -323,6 +904,7 @@ async function hydrateProgressPage(){
     const data = await Api.progress();
     const metrics = document.querySelectorAll('.metric-grid .metric strong');
     if (metrics.length >= 3) {
+      metrics.forEach(m => m.classList.remove('skeleton-text'));
       if (data.completed !== undefined) metrics[0].textContent = String(data.completed);
       if (data.accuracy !== undefined) metrics[1].textContent = `${data.accuracy}%`;
       if (data.practice_time !== undefined) metrics[2].textContent = data.practice_time;
@@ -361,16 +943,35 @@ async function hydrateProgressPage(){
   }
 }
 
-async function hydrateSocialPanel() {
+let friendsDataList = [];
+let friendsNextPage = null;
+let requestsDataList = [];
+let requestsNextPage = null;
+let fetchingSocial = false;
+
+async function hydrateSocialPanel(fPage = 1, rPage = 1) {
+  if (fetchingSocial) return;
+  fetchingSocial = true;
   try {
-    const data = await Api.getFriends();
+    const data = await Api.getFriends(fPage, rPage);
+    
+    if (fPage === 1 && rPage === 1) {
+        friendsDataList = data.friends || [];
+        requestsDataList = data.requests || [];
+    } else {
+        if (fPage > 1) friendsDataList = [...friendsDataList, ...(data.friends || [])];
+        if (rPage > 1) requestsDataList = [...requestsDataList, ...(data.requests || [])];
+    }
+    
+    friendsNextPage = data.friends_next ? fPage + 1 : null;
+    requestsNextPage = data.requests_next ? rPage + 1 : null;
     
     const friendsList = document.getElementById('friendsList');
     if (friendsList) {
-      if (!data.friends || data.friends.length === 0) {
+      if (!friendsDataList || friendsDataList.length === 0) {
         friendsList.innerHTML = `<p class="muted small-msg">No friends yet. Add some below!</p>`;
       } else {
-        friendsList.innerHTML = data.friends.map(f => {
+        friendsList.innerHTML = friendsDataList.map(f => {
           const isCustomImage = f.avatar.startsWith('data:image') || f.avatar.startsWith('http');
           const avatarHtml = isCustomImage 
             ? `<img src="${f.avatar}" class="friend-avatar-img">`
@@ -394,9 +995,9 @@ async function hydrateSocialPanel() {
     const pendingContainer = document.getElementById('pendingRequestsContainer');
     const pendingList = document.getElementById('pendingRequestsList');
     if (pendingContainer && pendingList) {
-      if (data.requests && data.requests.length > 0) {
+      if (requestsDataList && requestsDataList.length > 0) {
         pendingContainer.style.display = 'block';
-        pendingList.innerHTML = data.requests.map(r => {
+        pendingList.innerHTML = requestsDataList.map(r => {
           const isCustomImage = r.from_user.avatar.startsWith('data:image') || r.from_user.avatar.startsWith('http');
           const avatarHtml = isCustomImage 
             ? `<img src="${r.from_user.avatar}" class="friend-avatar-img">`
@@ -447,14 +1048,57 @@ async function hydrateSocialPanel() {
         }).join('');
       }
     }
+    setupFriendsInfiniteScroll();
   } catch (e) {
     console.error('Social panel hydration error:', e);
+  } finally {
+    fetchingSocial = false;
   }
+}
+
+function setupFriendsInfiniteScroll() {
+    let friendsSentinel = document.querySelector('#friendsSentinel');
+    if (!friendsSentinel) {
+        friendsSentinel = document.createElement('div');
+        friendsSentinel.id = 'friendsSentinel';
+        friendsSentinel.style.height = '1px';
+        const friendsList = document.querySelector('#friendsList');
+        if (friendsList && friendsList.parentNode) friendsList.parentNode.insertBefore(friendsSentinel, friendsList.nextSibling);
+    }
+    
+    if (window.friendsObserver) window.friendsObserver.disconnect();
+    if (friendsNextPage) {
+        window.friendsObserver = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && friendsNextPage && !fetchingSocial) {
+                hydrateSocialPanel(friendsNextPage, 1);
+            }
+        }, { rootMargin: '100px' });
+        window.friendsObserver.observe(friendsSentinel);
+    }
+    
+    let requestsSentinel = document.querySelector('#requestsSentinel');
+    if (!requestsSentinel) {
+        requestsSentinel = document.createElement('div');
+        requestsSentinel.id = 'requestsSentinel';
+        requestsSentinel.style.height = '1px';
+        const pendingList = document.querySelector('#pendingRequestsList');
+        if (pendingList && pendingList.parentNode) pendingList.parentNode.insertBefore(requestsSentinel, pendingList.nextSibling);
+    }
+    
+    if (window.requestsObserver) window.requestsObserver.disconnect();
+    if (requestsNextPage) {
+        window.requestsObserver = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && requestsNextPage && !fetchingSocial) {
+                hydrateSocialPanel(1, requestsNextPage);
+            }
+        }, { rootMargin: '100px' });
+        window.requestsObserver.observe(requestsSentinel);
+    }
 }
 function go(route){ if(!APP_ROUTES.has(route)) route='home';if(['translate','practice'].includes(route)&&!['translate','practice'].includes(state.route))state.returnRoute=state.route;const hash=`#/${route}`; if(location.hash===hash){state.route=route;render();}else location.hash=hash; }
 function closeModal(){const m=document.querySelector('#modal');if(!m)return;const v=m.querySelector('video');if(v)v.pause();m.remove();state.lastModalFocus?.focus?.();state.lastModalFocus=null;}
-function showModal(type){ state.lastModalFocus=document.activeElement;document.querySelector('#modal')?.remove(); document.body.insertAdjacentHTML('beforeend',modal(type)); I18n.apply(document.querySelector('#modal')); bindModal();requestAnimationFrame(()=>document.querySelector('#modal input, #modal [data-close]')?.focus()); }
-function bindModal(){
+function showModal(type){ state.lastModalFocus=document.activeElement;document.querySelector('#modal')?.remove(); document.body.insertAdjacentHTML('beforeend',modal(type)); I18n.apply(document.querySelector('#modal')); bindModal(type);requestAnimationFrame(()=>document.querySelector('#modal input, #modal [data-close], #modal button')?.focus()); }
+function bindModal(type){
   const m=document.querySelector('#modal');
   m?.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))closeModal();});
   m?.addEventListener('keydown',e=>{if(e.key!=='Tab')return;const items=[...m.querySelectorAll('button:not(:disabled),input:not(:disabled),a[href]')];if(!items.length)return;const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
@@ -465,6 +1109,183 @@ function bindModal(){
     try { const result=form.dataset.authType==='login'?await Api.login(data):await Api.register(data);if(result.user){state.user={...state.user,...result.user};localStorage.setItem('handsign_user',JSON.stringify(state.user));} closeModal(); toast(result.demo?'Demo account ready — connect Django in Profile.':'Welcome to HandSign!'); setTimeout(()=>go('dashboard'),350); }
     catch(error){ button.disabled=false; button.textContent=I18n.t('Try again'); toast(error.message); }
   });
+
+  if (type === 'onboarding') {
+    bindOnboardingWizard();
+  }
+
+  if (type === 'shop') {
+    const buyBtn = document.getElementById('buyPremiumShopBtn');
+    if (buyBtn) {
+      buyBtn.onclick = async () => {
+        if ((state.user.coins || 0) < 500) {
+          toast('Error: Not enough currency');
+          return;
+        }
+        buyBtn.disabled = true;
+        buyBtn.textContent = 'Kupuji...';
+        try {
+          const res = await Api.buyPremium();
+          state.user = { ...state.user, ...res.user };
+          localStorage.setItem('handsign_user', JSON.stringify(state.user));
+          closeModal();
+          toast(res.message || 'Premium aktivováno!');
+          render();
+        } catch (err) {
+          buyBtn.disabled = false;
+          buyBtn.textContent = '500 🪙';
+          toast(err.payload?.error || err.message || 'Chyba při nákupu.');
+        }
+      };
+    }
+  }
+
+  if (type === 'lesson-detail') {
+    document.querySelectorAll('[data-word-practice]').forEach(el => {
+      el.onclick = () => {
+        state.lesson = el.dataset.wordPractice;
+        closeModal();
+        go('practice');
+      };
+    });
+  }
+}
+
+let onboardingQuiz = [];
+let onboardingQIndex = 0;
+let onboardingScore = 0;
+let onboardingSelectedLevel = 'beginner';
+let onboardingGoal = 5;
+
+function bindOnboardingWizard() {
+  const content = document.getElementById('onboardingWizardContent');
+  if (!content) return;
+
+  const noKnowledgeBtn = document.getElementById('onboardingNoKnowledgeBtn');
+  const hasKnowledgeBtn = document.getElementById('onboardingHasKnowledgeBtn');
+
+  if (noKnowledgeBtn) {
+    noKnowledgeBtn.onclick = () => {
+      onboardingSelectedLevel = 'beginner';
+      showOnboardingStepGoal();
+    };
+  }
+
+  if (hasKnowledgeBtn) {
+    hasKnowledgeBtn.onclick = async () => {
+      content.innerHTML = `<span class="eyebrow">HandSign · ${I18n.t('Placement')}</span><h2>${I18n.t('Loading placement quiz...')}</h2><p class="muted">${I18n.t('Preparing questions from our database.')}</p>`;
+      try {
+        const res = await Api.quiz();
+        onboardingQuiz = res.quiz || [];
+        onboardingQIndex = 0;
+        onboardingScore = 0;
+        if (onboardingQuiz.length === 0) {
+          toast(I18n.t('Not enough words with video in the database.'));
+          onboardingSelectedLevel = 'beginner';
+          showOnboardingStepGoal();
+        } else {
+          showOnboardingStepQuizQuestion();
+        }
+      } catch (err) {
+        toast(I18n.t('Could not load the quiz.'));
+        onboardingSelectedLevel = 'beginner';
+        showOnboardingStepGoal();
+      }
+    };
+  }
+
+  function showOnboardingStepQuizQuestion() {
+    const q = onboardingQuiz[onboardingQIndex];
+    content.innerHTML = `
+      <span class="eyebrow">${I18n.t('Question {current} of {total}').replace('{current}', onboardingQIndex + 1).replace('{total}', onboardingQuiz.length)}</span>
+      <h2>${I18n.t('What does this sign mean?')}</h2>
+      <div style="width:100%;margin:15px 0;">
+        <video src="${q.video_url}" autoplay loop muted playsinline style="width:100%;aspect-ratio:16/9;border-radius:12px;background:#000;object-fit:cover;"></video>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${q.choices.map(choice => `
+          <button class="btn btn-ghost quiz-choice-btn" data-choice="${escapeHtml(choice)}" style="width:100%;text-align:left;padding:12px 16px;">
+            ${escapeHtml(choice)}
+          </button>
+        `).join('')}
+      </div>
+    `;
+
+    document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
+      btn.onclick = () => {
+        const selected = btn.dataset.choice;
+        if (selected === q.correct_answer) {
+          onboardingScore++;
+        }
+        onboardingQIndex++;
+        if (onboardingQIndex < onboardingQuiz.length) {
+          showOnboardingStepQuizQuestion();
+        } else {
+          if (onboardingScore === 3) {
+            onboardingSelectedLevel = 'intermediate';
+          } else if (onboardingScore >= 1) {
+            onboardingSelectedLevel = 'advanced_beginner';
+          } else {
+            onboardingSelectedLevel = 'beginner';
+          }
+          showOnboardingStepGoal();
+        }
+      };
+    });
+  }
+
+  function showOnboardingStepGoal() {
+    content.innerHTML = `
+      <span class="eyebrow">HandSign · ${I18n.t('Daily Goal')}</span>
+      <h2>${I18n.t('What is your daily goal?')}</h2>
+      <p>${I18n.t('Choose a time goal you want to meet daily to keep your streak:')}</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:20px 0;">
+        <button class="filter goal-choice-btn active" data-goal="5" style="width:100%;text-align:left;padding:16px;">
+          <strong>${I18n.t('Regular')}</strong> (5 ${I18n.t('minutes a day')})
+        </button>
+        <button class="filter goal-choice-btn" data-goal="15" style="width:100%;text-align:left;padding:16px;">
+          <strong>${I18n.t('Active')}</strong> (15 ${I18n.t('minutes a day')})
+        </button>
+        <button class="filter goal-choice-btn" data-goal="30" style="width:100%;text-align:left;padding:16px;">
+          <strong>${I18n.t('Intense')}</strong> (30 ${I18n.t('minutes a day')})
+        </button>
+      </div>
+      <button class="btn btn-dark" id="onboardingSubmitBtn" style="width:100%;">${I18n.t('Complete setup →')}</button>
+    `;
+
+    const goalBtns = document.querySelectorAll('.goal-choice-btn');
+    goalBtns.forEach(btn => {
+      btn.onclick = () => {
+        goalBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        onboardingGoal = parseInt(btn.dataset.goal, 10);
+      };
+    });
+
+    const submitBtn = document.getElementById('onboardingSubmitBtn');
+    if (submitBtn) {
+      submitBtn.onclick = async () => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = I18n.t('Saving...');
+        try {
+          const updatedUser = await Api.updatePreferences({
+            language_level: onboardingSelectedLevel,
+            daily_goal_minutes: onboardingGoal
+          });
+          state.user = { ...state.user, ...updatedUser };
+          localStorage.setItem('handsign_user', JSON.stringify(state.user));
+          closeModal();
+          const levelName = onboardingSelectedLevel === 'intermediate' ? I18n.t('Intermediate') : onboardingSelectedLevel === 'advanced_beginner' ? I18n.t('Advanced Beginner') : I18n.t('Beginner');
+          toast(`${I18n.t('Setup complete! Your level:')} ${levelName}`);
+          render();
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = I18n.t('Try again');
+          toast(I18n.t('Failed to save preferences.'));
+        }
+      };
+    }
+  }
 }
 function toast(msg){ const el=document.querySelector('#toast'); el.textContent=I18n.t(msg); el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),3200); }
 
@@ -585,7 +1406,22 @@ async function evaluateSign(){
   if(!state.cameraStream){const ready=await startCamera();if(ready)toast('Camera is ready. Show the sign, then check it again.');return;}
   btn.disabled=true;btn.textContent=I18n.t('Analyzing…');box.style.display='block';setFeedback(box,I18n.t('Looking at your movement…'));
   const landmarks=window.HandSignLandmarkProvider?.getSequence?.() || [];
-  try{const result=await Api.evaluateSign({lesson:state.lesson,landmarks,language:I18n.current});setFeedback(box,`${result.score}% ${I18n.t('match')}${result.demo?` · ${I18n.t('Demo')}`:''}`,I18n.t(result.feedback));toast(result.demo?'Demo feedback shown — API endpoint is ready to connect.':'Sign analyzed successfully.');}
+  try{
+    const result=await Api.evaluateSign({lesson:state.lesson,landmarks,language:I18n.current});
+    setFeedback(box,`${result.score}% ${I18n.t('match')}${result.demo?` · ${I18n.t('Demo')}`:''}`,I18n.t(result.feedback));
+    
+    if (result.xp_gained > 0 || result.coins_gained > 0) {
+      toast(`+${result.xp_gained} XP | +${result.coins_gained} Coins 🪙`);
+      if (result.current_xp !== undefined) state.user.xp = result.current_xp;
+      if (result.current_coins !== undefined) state.user.coins = result.current_coins;
+      localStorage.setItem('handsign_user', JSON.stringify(state.user));
+      
+      const coinSpan = document.getElementById('headerCoinCount');
+      if (coinSpan) coinSpan.textContent = String(state.user.coins);
+    } else {
+      toast(result.demo?'Demo feedback shown — API endpoint is ready to connect.':'Sign analyzed successfully.');
+    }
+  }
   catch(error){setFeedback(box,I18n.t('Could not analyze'),error.message);}
   finally{btn.disabled=false;btn.textContent=I18n.t('Check my sign');}
 }
@@ -623,6 +1459,10 @@ async function saveUserSettings(e){
   const presetAvatar=document.querySelector('#userAvatarInput').value;
   const fileInput=document.querySelector('#userAvatarFileInput');
   const new_password=document.querySelector('#userNewPasswordInput').value;
+  const country=document.querySelector('#userCountryInput').value;
+  const pronouns=document.querySelector('#userPronounsInput').value;
+  const skin_tone=document.querySelector('#userSkinToneInput').value;
+  const daily_goal_minutes=document.querySelector('#userGoalInput')?.value;
 
   let avatar = presetAvatar;
   if(fileInput && fileInput.files && fileInput.files[0]){
@@ -635,7 +1475,7 @@ async function saveUserSettings(e){
   }
 
   try{
-    const updated=await Api.updateProfile({name,email,avatar,new_password});
+    const updated=await Api.updateProfile({name,email,avatar,new_password,country,pronouns,skin_tone,daily_goal_minutes,onboarding_completed:true});
     state.user={...state.user,...updated};
     localStorage.setItem('handsign_user',JSON.stringify(state.user));
     if(status){status.textContent=I18n.t('Profile updated.');status.classList.add('connected');}
@@ -647,10 +1487,46 @@ async function saveUserSettings(e){
   }
 }
 
-function filterLessons(level,button){document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));button.classList.add('active');const selected=level==='all'?lessons:lessons.filter(x=>x.level===level);const grid=document.querySelector('#libraryGrid');grid.innerHTML=`<div class="lessons-grid library-lessons">${selected.map(l=>`<article class="lesson-card" tabindex="0" role="button" data-lesson="${l.name}"><div class="lesson-visual"><span class="level">${l.level}</span>${l.emoji}</div><div class="lesson-info"><h3>${l.name}</h3><div class="lesson-meta"><span>◷ ${l.time}</span><span>${l.score}</span></div></div></article>`).join('')}</div>`;I18n.apply(grid);bindLessonCards();}
+function filterLessons(level,button){
+  document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));
+  button.classList.add('active');
+  const grid=document.querySelector('#libraryGrid');
+  if(grid){
+    const activeBackup=[...lessons];
+    if(level!=='all'){
+      lessons=lessons.filter(x=>x.level===level);
+    }
+    grid.innerHTML=lessonCards('library-lessons');
+    lessons=activeBackup;
+    I18n.apply(grid);
+    bindLessonCards();
+  }
+}
 async function checkout(){const btn=document.querySelector('[data-checkout]');btn.disabled=true;btn.textContent=I18n.t('Opening checkout…');try{const result=await Api.createCheckout();if(result.url){const target=new URL(result.url,location.origin);if(target.origin===location.origin||target.hostname==='checkout.stripe.com')location.assign(target.href);else throw new Error('Unexpected checkout URL.');}else{toast('Stripe endpoint is ready; demo mode does not open payment.');btn.disabled=false;btn.textContent=I18n.t('Upgrade to Family');}}catch(error){toast(error.message);btn.disabled=false;btn.textContent=I18n.t('Upgrade to Family');}}
 function logout(){localStorage.removeItem('handsign_access_token');localStorage.removeItem('handsign_user');state.user={name:'Alex Morgan',email:'alex@example.com'};toast('Signed out.');go('home');}
-function bindLessonCards(){document.querySelectorAll('[data-lesson]').forEach(el=>{el.onclick=()=>{state.lesson=el.dataset.lesson;go('practice');};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}};});}
+function bindLessonCards(){
+  document.querySelectorAll('[data-lesson]').forEach(el=>{
+    el.onclick=()=>{state.lesson=el.dataset.lesson;go('practice');};
+  });
+  document.querySelectorAll('[data-lesson-group]').forEach(el => {
+    el.onclick = () => {
+      const lgId = parseInt(el.dataset.lessonGroup, 10);
+      const lg = lessonGroups.find(x => x.id === lgId);
+      if (!lg) return;
+      const incompleteWord = lg.words.find(w => w.score === 'New' || parseInt(w.score, 10) < 70) || lg.words[0];
+      if (incompleteWord) {
+        state.lesson = incompleteWord.name;
+        go('practice');
+      }
+    };
+  });
+  document.querySelectorAll('[data-lesson-word]').forEach(el => {
+    el.onclick = () => {
+      state.lesson = el.dataset.lessonWord;
+      go('practice');
+    };
+  });
+}
 function updatePreferenceUrl(key,value){const url=new URL(location.href);url.searchParams.set(key,value);history.replaceState(null,'',`${url.pathname}${url.search}${url.hash}`);}
 function toggleTheme(){
   const next=isDark()?'light':'dark'; document.documentElement.dataset.theme=next; localStorage.setItem('handsign_theme',next);
@@ -706,13 +1582,41 @@ function bind(){
   document.querySelectorAll('[data-scroll]').forEach(el=>el.onclick=e=>{e.preventDefault();document.querySelector(`#${el.dataset.scroll}`)?.scrollIntoView({behavior:'smooth'});closeMobileMenu();closeProfileMenu();});
   document.querySelector('[data-mobile-menu]')?.addEventListener('click',e=>{const menu=document.querySelector('#mobileDropdown'),open=!menu.classList.contains('open');menu.classList.toggle('open',open);e.currentTarget.setAttribute('aria-expanded',String(open));});
   bindLessonCards();
-  document.querySelectorAll('[data-filter]').forEach(el=>el.onclick=()=>filterLessons(el.dataset.filter,el));
+  document.querySelectorAll('[data-lessons-filter]').forEach(el => {
+    el.onclick = () => {
+      state.selectedLessonsFilter = el.dataset.lessonsFilter;
+      render();
+    };
+  });
+  document.querySelectorAll('[data-words-filter]').forEach(el => {
+    el.onclick = () => {
+      state.selectedWordsFilter = el.dataset.wordsFilter;
+      render();
+    };
+  });
+  
+  const tfSelect = document.getElementById('leaderboardTimeframeSelect');
+  if (tfSelect) {
+    tfSelect.onchange = (e) => {
+      state.leaderboardTimeframe = e.target.value;
+      hydrateLeaderboard();
+    };
+  }
+  
+  const cSelect = document.getElementById('leaderboardCountrySelect');
+  if (cSelect) {
+    cSelect.onchange = (e) => {
+      state.leaderboardCountry = e.target.value;
+      hydrateLeaderboard();
+    };
+  }
   document.querySelector('[data-action="edit-profile"]')?.addEventListener('click',()=>showModal('profile'));
   document.querySelectorAll('[data-logout]').forEach(el=>el.addEventListener('click',()=>{ closeProfileMenu(); logout(); }));
   document.querySelector('#userSettingsForm')?.addEventListener('submit',saveUserSettings);
   document.querySelectorAll('[data-profile-toggle]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();toggleProfileMenu();}));
 
   document.querySelector('[data-checkout]')?.addEventListener('click',checkout);
+  document.querySelector('#openShopBtn')?.addEventListener('click', () => showModal('shop'));
   document.querySelectorAll('[data-theme-toggle]').forEach(el=>el.addEventListener('click',toggleTheme));
   document.querySelectorAll('[data-language-toggle]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();toggleLanguageMenu(el);}));
   document.querySelectorAll('[data-language-option]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();changeLanguage(el.dataset.languageOption);}));

@@ -1,126 +1,132 @@
-# AI Tutor Znakové řeči - Backend API & Frontend SPA
+# Sign Language AI Tutor - Backend API & Frontend SPA
 
-Robustní Python/Django backend a interaktivní Vanilla JS SPA frontend navržený pro výuku americké znakové řeči (ASL) a překlad znaků v reálném čase. Aplikace je optimalizována pro výuku rodičů dětí s opožděným vývojem řeči nebo autismem.
-
----
-
-## Hlavní Funkce (Core Features)
-
-### 🧠 1. MediaPipe Evaluace a Gemini AI Zpětná Vazba
-- **Landmark Normalization**: Vyhodnocovací algoritmus normalizuje 21 3D souřadnic ruky ( wrist-centered centrování, škálování na velikost dlaně) a provádí časové resamplování (lineární interpolace) pro nezávislost na vzdálenosti od kamery a rychlosti pohybu.
-- **Gemini AI Diagnostics**: V případě chybně provedeného znaku analyzuje přesné odchylky jednotlivých prstů a dotazuje Google Gemini API, které uživateli vrací empatické, konkrétní rady v češtině.
-
-### 📺 2. Lekce s Ukázkovým Videem (WLASL) & Ghost Overlay
-- **Local Serving**: Systém lokálně streamuje původní mp4 videa ze složky `raw_videos/` přímo do prohlížeče.
-- **Auto-Open Tutorial**: Při vstupu do lekce se uživateli automaticky otevře přehrávač videa ve smyčce (loop).
-- **Watch Example**: Během samotného cvičení s kamerou lze video kdykoliv znovu spustit tlačítkem *"Watch Video Example"*.
-- **Digital Ghost Overlay**: Přímo přes obraz webkamery uživatele se promítá poloprůhledný, animovaný skelet ruky ("duch") správného provedení znaku. Uživatel tak získává okamžitou motorickou korekci zobrazenou v reálném čase.
-
-### 👥 3. Sociální Systém (Přátelé, Streaks & Doporučení)
-- **Gamified Streaks**: Výpočet denních sérií (streak) na základě dat o splněných cvičeních.
-- **Žebříček (Streaks Scoreboard)**: Seznam přátel je automaticky seřazen podle jejich denních sérií pro posílení motivace.
-- **Suggestions (Doporučení)**: Systém doporučuje ostatní uživatele aplikace, které si lze přidat jedním kliknutím.
-- **Requests & Approvals**: Podpora schvalování a odmítání příchozích žádostí o přátelství v reálném čase.
-
-### 💳 4. Stripe Paywall & Předplatné
-- **Stripe Checkout**: Integrované platební brány pro nákup plného přístupu.
-- **Stripe Webhooks**: Bezpečné automatické odemykání prémiových lekcí po úspěšném zpracování platby.
+A robust Python/Django backend and an interactive Vanilla JS SPA frontend designed for teaching American Sign Language (ASL) and translating signs in real time. The application is specifically optimized to help parents of children with delayed speech development or autism.
 
 ---
 
-## 💼 Business Model & Monetizace
+## Core Features
 
-HandSign je navržen jako vysoce životaschopný produkt se zaměřením na specifický a bonitní trh:
-- **Cílová skupina**: Rodiče dětí s komunikačními bariérami (autismus, opožděný vývoj řeči, sluchová postižení). Tito rodiče mají extrémní motivaci naučit se znakovou řeč rychle, aby mohli se svými dětmi komunikovat doma.
-- **Monetizační model**: Jednorázový poplatek nebo předplatné ve výši **$10 USD (cca 230 Kč)** za neomezený přístup pro celou rodinu ("Family Unlimited Access"). Zpracování plateb probíhá plně automatizovaně přes zabezpečené rozhraní Stripe.
-- **Důkazy o tržbách**: Platební toky jsou integrované do Stripe dashboardu a simulovatelné v testovacím režimu pro doložení reálných konverzí pro účely hodnocení poroty.
+### 🧠 1. MediaPipe Evaluation & Gemini AI Feedback
+- **Landmark Normalization**: Our evaluation algorithm normalizes 21 3D hand coordinates (wrist-centered scaling to palm size) and runs temporal resampling via linear interpolation. This ensures the engine doesn't care how far you are from the camera or how fast you move.
+- **Gemini AI Diagnostics**: If you mess up a sign, the system analyzes the exact deviations of your individual fingers and pings the Google Gemini API to give you empathetic, highly specific advice on how to fix it.
+
+### 📺 2. Video Lessons (WLASL) & Ghost Overlay
+- **Local Serving**: We stream the original mp4 WLASL videos directly from the `raw_videos/` folder straight to the browser.
+- **Auto-Open Tutorial**: Whenever you jump into a lesson, a looping video tutorial automatically pops up to show you the ropes.
+- **Watch Example**: While you're practicing on camera, you can always pull the video back up by hitting the *"Watch Video Example"* button.
+- **Digital Ghost Overlay**: A semi-transparent, animated skeletal hand (a "ghost") demonstrating the correct execution is projected directly over your webcam feed. It's essentially real-time motor correction drawn right on your screen.
+
+### 👥 3. Social System (Friends, Streaks & Suggestions)
+- **Gamified Streaks**: Daily streaks are automatically tracked based on the exercises you complete.
+- **Streaks Scoreboard**: Your friend list doubles as a leaderboard that auto-sorts everyone by their daily streaks to keep motivation high.
+- **Suggestions**: The system suggests other users you might want to connect with, which you can add with a single click.
+- **Requests & Approvals**: Full real-time support for sending, accepting, and declining friend requests.
+
+### 💳 4. Stripe Paywall & Subscriptions
+- **Stripe Checkout**: Fully integrated payment gateways for purchasing premium access.
+- **Stripe Webhooks**: Secure, automated unlocking of premium lessons the exact moment your payment clears.
+
+### ⚡ 5. Scalable Architecture (Infinite Scroll & Pagination)
+- **IntersectionObserver Infinite Scroll**: The client SPA leverages modern IntersectionObservers to deliver a flawless infinite scrolling experience across the entire app (Lesson Library, Leaderboards, Friend Lists).
+- **Backend Pagination**: The Django REST Framework (DRF) serves data in pages. The social panel uses an advanced asynchronous pagination strategy that independently paginates accepted friends (`friends_page`) and pending requests (`requests_page`) inside a single API call, entirely eliminating massive JSON payloads.
 
 ---
 
-## 🚀 Budoucí rozvoj & Vize (Future Vision)
+## 💼 Business Model & Monetization
 
-Pro účely soutěže a budoucího rozvoje platformy jsou navržena tato technická a obsahová rozšíření:
-1. **Sledování obličeje a postavení (NMMs - Non-Manual Markers)**: Znakový jazyk není pouze o rukou, ale velkou roli hraje mimika a pohyb ramen. Budoucí verze rozšíří MediaPipe model o detekci mimických bodů a náklonu těla, přičemž Gemini AI bude hodnotit celkovou přirozenost projevu.
-2. **Adaptivní výuka (Adaptive Learning)**: Pokud systém detekuje, že uživatel opakovaně chybuje v konkrétní oblasti (např. nedovřený palec u písmene D), algoritmus mu automaticky do výukového plánu zařadí izolační cvičení zaměřená přesně na tuto motorickou korekci.
-3. **Situační scénáře**: Přechod od izolovaných slovíček k tématickým konverzačním celkům ("Hraní v parku", "Čas na oběd"), což umožní rodičům aplikovat znaky v reálném životě okamžitě.
-4. **Kulturní kontext neslyšících**: Integrace rad ohledně kultury neslyšících (např. jak správně navázat oční kontakt) přímo do doporučení od Gemini AI, aby se uživatelé učili jazyk v celkovém sociálním kontextu.
+HandSign is built as a highly viable product targeting a specific, high-intent market:
+- **Target Audience**: Parents of children with communication barriers (autism, delayed speech development, hearing impairments). These parents are incredibly motivated to learn sign language fast so they can actually communicate with their kids at home.
+- **Monetization Model**: A flat fee or subscription of **$10 USD** for "Family Unlimited Access". Payments are fully automated through a secure Stripe interface.
+- **Proof of Revenue**: The payment flows are wired directly into a Stripe dashboard and can be simulated in test mode to prove real conversion mechanics for the jury's evaluation.
 
 ---
 
-## Přehled API Endpoints (`/api/v1/`)
+## 🚀 Future Vision
 
-Všechny API požadavky a odpovědi komunikují v JSON formátu a vyžadují autorizační hlavičku pro zabezpečené sekce:  
+For the sake of the competition and the platform's future growth, here's what we're building next:
+1. **Face and Body Tracking (NMMs - Non-Manual Markers)**: Sign language isn't just about hands; facial expressions and shoulder movements are massive. Future versions will expand the MediaPipe model to detect facial landmarks and body tilt, allowing Gemini AI to evaluate the overall naturalness of your delivery.
+2. **Adaptive Learning**: If the system notices you're repeatedly making the same mistake (e.g., leaving your thumb open on the letter D), the algorithm will automatically inject isolation exercises targeting that exact motor correction into your learning plan.
+3. **Situational Scenarios**: We're moving from isolated vocabulary to thematic conversational blocks ("Playing at the park", "Lunchtime"), letting parents apply signs in real-life situations immediately.
+4. **Deaf Culture Context**: We plan to weave Deaf culture tips (like how to properly maintain eye contact) straight into Gemini AI's feedback so users learn the language in its proper social context.
+
+---
+
+## API Endpoints Overview (`/api/v1/`)
+
+All API requests and responses talk in JSON and require an authorization header for secured sections:  
 `Authorization: Bearer <auth_token>`
 
-### 🔑 Autentizace
-- `POST /api/v1/auth/register/` – Registrace nového uživatele.
-- `POST /api/v1/auth/login/` – Přihlášení uživatele.
+### 🔑 Authentication
+- `POST /api/v1/auth/register/` – Register a new user.
+- `POST /api/v1/auth/login/` – Log a user in.
 
-### 📚 Lekce a Pokrok
-- `GET /api/v1/lessons/` – Získání seznamu dostupných lekcí (včetně odkazů na ukázková videa).
-- `GET /api/v1/me/progress/` – Získání statistik uživatele (denní série, přesnost, aktivní dny v týdnu).
-- `GET /api/v1/me/` – Získání a aktualizace detailů profilu (včetně nahrání vlastního avataru).
+### 📚 Lessons & Progress
+- `GET /api/v1/lessons/` – Fetch available lessons (including links to example videos).
+- `GET /api/v1/me/progress/` – Fetch user stats (daily streak, accuracy, active days this week).
+- `GET /api/v1/me/` – Fetch and update profile details (including custom avatar uploads).
 
-### 🤖 Vyhodnocení a Překlad
-- `POST /api/v1/practice/evaluate/` – Odeslání MediaPipe landmarků pro vyhodnocení konkrétního slova.
-- `POST /api/v1/translate/` – Odeslání video klipu a landmarků pro překlad v reálném čase.
+### 🤖 Evaluation & Translation
+- `POST /api/v1/practice/evaluate/` – Submit MediaPipe landmarks to evaluate a specific word.
+- `POST /api/v1/translate/` – Submit a video clip and landmarks for real-time translation.
 
-### 👥 Sociální Funkce (Přátelé)
-- `GET /api/v1/friends/` – Vrací seznam přátel, příchozí žádosti a doporučené uživatele.
-- `POST /api/v1/friends/request/` – Odeslání žádosti o přátelství (přijímá `username` nebo `to_user_id`).
-- `POST /api/v1/friends/respond/` – Schválení (`accept`) nebo zamítnutí (`reject`) žádosti (přijímá `friendship_id`).
+### 👥 Social Features (Friends & Leaderboard)
+- `GET /api/v1/friends/` – Returns friends, incoming requests, and suggested users. Supports `friends_page` and `requests_page` params for smooth infinite scrolling.
+- `POST /api/v1/friends/request/` – Send a friend request (accepts `username` or `to_user_id`).
+- `POST /api/v1/friends/respond/` – Approve (`accept`) or decline (`reject`) a request (accepts `friendship_id`).
+- `GET /api/v1/users/leaderboard/` – Fetch the global or local player leaderboard sorted by XP, with standard `page` pagination support.
 
-### 💳 Platby
-- `POST /api/v1/billing/checkout/` – Vytvoření Stripe Checkout relace.
+### 💳 Billing
+- `POST /api/v1/billing/checkout/` – Create a Stripe Checkout session.
+- `POST /api/v1/billing/stripe-webhook/` – Stripe webhook endpoint for processing async payment events (e.g., `checkout.session.completed`).
 
 ---
 
-## Lokální Spuštění (Docker Setup)
+## Running Locally (Docker Setup)
 
-Nejsnazší cesta pro lokální spuštění celé aplikace:
+The absolute easiest way to get the whole stack running locally:
 
-1. **Vytvoření konfiguračního souboru `.env`:**
-   Vytvořte v kořeni soubor `.env` podle předlohy `.env.example` a vyplňte klíče `GEMINI_API_KEY` a `STRIPE_SECRET_KEY`.
+1. **Create the `.env` config file:**
+   Create a `.env` file in the root directory based on `.env.example` and drop in your `GEMINI_API_KEY`, `STRIPE_SECRET_KEY`, and `STRIPE_WEBHOOK_SECRET`.
 
-2. **Sestavení Docker obrazu:**
+2. **Build the Docker image:**
    ```bash
    docker build -t signy-backend .
    ```
 
-3. **Spuštění kontejneru:**
+3. **Spin up the container:**
    ```bash
    docker run -d --name signy-app -p 8080:8080 signy-backend
    ```
-   Aplikace bude běžet na adrese `http://localhost:8080/`.
+   The app will be live at `http://localhost:8080/`.
 
-4. **Nahrání ukázkových videí do kontejneru:**
+4. **Upload example videos into the container:**
    ```bash
    docker cp raw_videos signy-app:/app/raw_videos
    ```
 
-5. **Import WLASL databáze gest (limit 150 videí):**
+5. **Import the WLASL gesture database (limited to 150 videos):**
    ```bash
    docker exec signy-app python manage.py import_raw_videos --limit 150
    ```
 
 ---
 
-## Spuštění mimo Docker (Vývojářský Režim)
+## Running without Docker (Developer Mode)
 
-1. **Aktivace virtuálního prostředí:**
+1. **Activate your virtual environment:**
    ```bash
    .\venv\Scripts\activate
    ```
-2. **Instalace závislostí:**
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
-3. **Spuštění migrací a naplnění dat:**
+3. **Run migrations and seed the database:**
    ```bash
    python manage.py migrate
    python manage.py seed_lessons
    ```
-4. **Spuštění vývojového serveru:**
+4. **Boot up the dev server:**
    ```bash
    python manage.py runserver 8080
    ```

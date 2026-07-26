@@ -35,7 +35,8 @@ async function request(path, { method = 'GET', body, formData, timeout = 8000, f
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(`${apiBase()}${path}`, {
+    const url = path.startsWith('http') ? path : `${apiBase()}${path}`;
+    const response = await fetch(url, {
       method,
       credentials: 'include',
       signal: controller.signal,
@@ -99,8 +100,8 @@ export const Api = {
       fallback: { user: { name: 'Alex', email: data.email }, access: 'demo-token' }
     });
   },
-  async lessons() {
-    return request('/lessons/', { fallback: { results: [] } });
+  async lessons(url = null) {
+    return request(url || '/lessons/', { fallback: { results: [] } });
   },
   async progress() {
     return request('/me/progress/', { fallback: { streak: 7, completed: 12, accuracy: 86 } });
@@ -131,8 +132,8 @@ export const Api = {
       fallback: { url: null }
     });
   },
-  async getFriends() {
-    return request('/friends/', { fallback: { friends: [], requests: [], suggestions: [] } });
+  async getFriends(friendsPage = 1, requestsPage = 1) {
+    return request(`/friends/?friends_page=${friendsPage}&requests_page=${requestsPage}`, { fallback: { friends: [], requests: [], suggestions: [] } });
   },
   async sendFriendRequest(usernameOrId) {
     const payload = typeof usernameOrId === 'number' ? { to_user_id: usernameOrId } : { username: usernameOrId };
@@ -143,5 +144,22 @@ export const Api = {
   },
   async lessonDetail(id) {
     return request(`/lessons/${id}/`, { fallback: { reference_landmarks: [] } });
+  },
+  async quiz() {
+    return request('/practice/quiz/', { fallback: { quiz: [] } });
+  },
+  async updatePreferences(body) {
+    return request('/me/preferences/', { method: 'POST', body, fallback: { onboarding_completed: true } });
+  },
+  async buyPremium() {
+    return request('/store/buy-premium/', { method: 'POST', body: {}, fallback: { message: 'Premium activated' } });
+  },
+  async getLeaderboard(timeframe = 'all_time', country = 'global', url = null) {
+    const res = await request(url || `/leaderboard/?timeframe=${timeframe}&country=${country}`, { fallback: { leaderboard: [] } });
+    return res;
+  },
+  async getCountries() {
+    const res = await request('/countries/', { fallback: { countries: [] } });
+    return res.countries || [];
   }
 };

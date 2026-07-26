@@ -83,9 +83,24 @@ class EvaluateSignView(APIView):
         # Generate natural language feedback via Gemini API in target language
         feedback = generate_gemini_feedback(word.name, score, success, issues, language=language)
 
-        # Update User progress if user is authenticated
+        # Update User progress and award XP / Coins if user is authenticated
+        xp_gained = 10
+        coins_gained = 0
+        
         if request.user.is_authenticated:
-            progress, _ = UserProgress.objects.get_or_create(user=request.user, word=word)
+            user = request.user
+            user.xp += 10
+            if success:
+                user.xp += 50
+                user.coins += 5
+                xp_gained += 50
+                coins_gained += 5
+            user.save()
+            
+            from users.models import XPEntry
+            XPEntry.objects.create(user=user, amount=xp_gained)
+
+            progress, _ = UserProgress.objects.get_or_create(user=user, word=word)
             if score > progress.best_score:
                 progress.best_score = score
             if success:
@@ -99,7 +114,11 @@ class EvaluateSignView(APIView):
             'success': success,
             'feedback': feedback,
             'issues': issues,
-            'mean_distance': eval_result.get('mean_distance', 0)
+            'mean_distance': eval_result.get('mean_distance', 0),
+            'xp_gained': xp_gained if request.user.is_authenticated else 0,
+            'coins_gained': coins_gained if request.user.is_authenticated else 0,
+            'current_xp': request.user.xp if request.user.is_authenticated else 0,
+            'current_coins': request.user.coins if request.user.is_authenticated else 0
         })
 
 class TranslateClipView(APIView):

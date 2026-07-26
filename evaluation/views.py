@@ -25,6 +25,7 @@ class EvaluateSignView(APIView):
     def post(self, request):
         lesson_identifier = request.data.get('lesson') or request.data.get('word_id')
         user_landmarks = request.data.get('landmarks', [])
+        face_metrics = request.data.get('face_metrics', [])
         language = request.data.get('language', 'cs')
 
         if not lesson_identifier:
@@ -44,15 +45,10 @@ class EvaluateSignView(APIView):
             ).first()
 
         if not word:
-            # Fallback for dynamic/unregistered lesson names
-            score = 88.0
-            feedback = generate_gemini_feedback(str(lesson_identifier), score, True, [], language=language)
-            return Response({
-                'score': score,
-                'success': True,
-                'feedback': feedback,
-                'issues': []
-            })
+            return Response(
+                {'error': 'Lesson not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # Check premium access
         if word.is_premium and request.user.is_authenticated and not request.user.is_subscribed:
@@ -63,19 +59,19 @@ class EvaluateSignView(APIView):
 
         ref_landmarks = word.reference_landmarks
         if not ref_landmarks:
-            score = 85.0
-            feedback = generate_gemini_feedback(word.name, score, True, [], language=language)
-            return Response({
-                'word_id': word.id,
-                'word_name': word.name,
-                'score': score,
-                'success': True,
-                'feedback': feedback,
-                'issues': []
-            })
+            return Response(
+                {'error': 'This lesson does not have reference landmarks yet.'},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
 
         # Perform mathematical evaluation
-        eval_result = evaluate_landmarks(user_landmarks, ref_landmarks)
+        eval_result = evaluate_landmarks(
+            user_landmarks,
+            ref_landmarks,
+            face_metrics=face_metrics,
+            reference_face_metrics=word.reference_face_metrics if word.requires_face else None,
+            language=language,
+        )
         score = eval_result['score']
         success = eval_result['success']
         issues = eval_result['issues']
@@ -99,7 +95,8 @@ class EvaluateSignView(APIView):
             'success': success,
             'feedback': feedback,
             'issues': issues,
-            'mean_distance': eval_result.get('mean_distance', 0)
+            'mean_distance': eval_result.get('mean_distance', 0),
+            'face_score': eval_result.get('face_score'),
         })
 
 class TranslateClipView(APIView):
@@ -122,25 +119,37 @@ class TranslateClipView(APIView):
             landmarks = raw_landmarks
 
         api_key = settings.GEMINI_API_KEY
+        clip = request.FILES.get('clip')
         
         # System prompt for sign translation
         lang_target = "English" if language == 'en' else "Czech" if language == 'cs' else "Ukrainian" if language == 'uk' else "Russian"
         
-        if api_key and landmarks:
+        if api_key and clip:
             try:
                 from google import genai
+                from google.genai import types
                 client = genai.Client(api_key=api_key)
                 prompt = f"""
-Translate this American Sign Language (ASL) gesture landmark sequence into a single, natural, complete sentence in {lang_target}.
-Number of frames detected: {len(landmarks)}.
+Analyze this short American Sign Language (ASL) video and translate only
+what is visibly signed into a concise sentence in {lang_target}.
+Hand landmark samples captured: {len(landmarks)}.
+If the signing is not clear enough to translate, respond with UNCLEAR.
 Respond ONLY with the translated text without quotes.
 """
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash",
-                    contents=prompt
+                    model=settings.GEMINI_MODEL,
+                    contents=[
+                        types.Part.from_bytes(
+                            data=clip.read(),
+                            mime_type=clip.content_type or 'video/webm',
+                        ),
+                        prompt,
+                    ],
                 )
                 if response and response.text:
-                    return Response({'text': response.text.strip(), 'confidence': 0.89})
+                    text = response.text.strip()
+                    if text.upper() != 'UNCLEAR':
+                        return Response({'text': text, 'confidence': 0.75})
             except Exception:
                 pass
 
@@ -153,5 +162,6 @@ Respond ONLY with the translated text without quotes.
         }
         return Response({
             'text': translations.get(language, translations['en']),
-            'confidence': 0.85
+            'confidence': 0.0,
+            'demo': True,
         })

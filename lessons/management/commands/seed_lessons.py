@@ -24,54 +24,54 @@ def generate_hand_landmarks(gesture_type='open_palm', frames=6):
         frame_lms.append({'x': 0.0, 'y': 0.0, 'z': 0.0})
 
         if gesture_type == 'fist':
-            curl = 0.2
+            extension = 0.25
         elif gesture_type == 'milk':
             squeezing = math.sin(alpha * math.pi)
-            curl = 0.8 - (0.6 * squeezing)
-        elif gesture_type == 'index_point':
-            curl = 0.8
+            extension = 1.0 - (0.7 * squeezing)
+        elif gesture_type in ('index_point', 'water'):
+            extension = 1.0
         else:
-            curl = 0.8
+            extension = 1.0
 
         # Thumb (1..4)
         for i in range(1, 5):
             factor = i / 4.0
             frame_lms.append({
                 'x': round(-0.3 * factor, 4),
-                'y': round(0.4 * factor * (0.8 if gesture_type == 'fist' else 1.0), 4),
+                'y': round(-0.4 * factor * extension, 4),
                 'z': round(-0.1 * factor, 4)
             })
 
         # Index (5..8)
-        is_index_extended = gesture_type in ('open_palm', 'index_point', 'milk')
+        is_index_extended = gesture_type in ('open_palm', 'index_point', 'water', 'milk')
         for i in range(1, 5):
             factor = (4 + i) / 8.0
-            curlm = 1.0 if is_index_extended else 0.3
+            curlm = extension if (is_index_extended or gesture_type == 'milk') else 0.3
             frame_lms.append({
                 'x': round(-0.2 * factor, 4),
-                'y': round(0.7 * factor * curlm, 4),
+                'y': round(-0.7 * factor * curlm, 4),
                 'z': round(0.0, 4)
             })
 
         # Middle (9..12)
-        is_middle_extended = gesture_type in ('open_palm', 'milk')
+        is_middle_extended = gesture_type in ('open_palm', 'water', 'milk')
         for i in range(1, 5):
             factor = (4 + i) / 8.0
-            curlm = 1.0 if is_middle_extended else 0.3
+            curlm = extension if (is_middle_extended or gesture_type == 'milk') else 0.3
             frame_lms.append({
                 'x': round(0.0, 4),
-                'y': round(0.8 * factor * curlm, 4),
+                'y': round(-0.8 * factor * curlm, 4),
                 'z': round(0.0, 4)
             })
 
         # Ring (13..16)
-        is_ring_extended = gesture_type == 'open_palm'
+        is_ring_extended = gesture_type in ('open_palm', 'water')
         for i in range(1, 5):
             factor = (4 + i) / 8.0
-            curlm = 1.0 if is_ring_extended else 0.3
+            curlm = extension if (is_ring_extended or gesture_type == 'milk') else 0.3
             frame_lms.append({
                 'x': round(0.2 * factor, 4),
-                'y': round(0.7 * factor * curlm, 4),
+                'y': round(-0.7 * factor * curlm, 4),
                 'z': round(0.0, 4)
             })
 
@@ -79,16 +79,35 @@ def generate_hand_landmarks(gesture_type='open_palm', frames=6):
         is_pinky_extended = gesture_type == 'open_palm'
         for i in range(1, 5):
             factor = (4 + i) / 8.0
-            curlm = 1.0 if is_pinky_extended else 0.3
+            curlm = extension if (is_pinky_extended or gesture_type == 'milk') else 0.3
             frame_lms.append({
                 'x': round(0.3 * factor, 4),
-                'y': round(0.6 * factor * curlm, 4),
+                'y': round(-0.6 * factor * curlm, 4),
                 'z': round(0.0, 4)
             })
 
         sequence.append(frame_lms)
 
     return sequence
+
+
+def make_two_hand_sequence(sequence):
+    """Build a stable 42-point two-hand reference from a 21-point hand pose."""
+    result = []
+    total = max(len(sequence) - 1, 1)
+    for frame_index, frame in enumerate(sequence):
+        phase = math.sin((frame_index / total) * math.pi)
+        gap = 0.52 - (0.16 * phase)
+        left = [
+            {'x': round(-gap - point['x'], 4), 'y': point['y'], 'z': point['z']}
+            for point in frame
+        ]
+        right = [
+            {'x': round(gap + point['x'], 4), 'y': point['y'], 'z': point['z']}
+            for point in frame
+        ]
+        result.append(left + right)
+    return result
 
 class Command(BaseCommand):
     help = 'Seeds initial categories and 40+ English ASL sign words with reference MediaPipe landmarks'
@@ -115,7 +134,7 @@ class Command(BaseCommand):
         words_data = [
             # Food & Drinks
             {'name': 'Milk', 'category': 'Food & Drinks', 'gesture': 'milk', 'premium': False, 'desc': 'Squeeze hand open and closed as if milking a cow.'},
-            {'name': 'Water', 'category': 'Food & Drinks', 'gesture': 'index_point', 'premium': False, 'desc': 'Form W-shape with index, middle, ring finger at chin.'},
+            {'name': 'Water', 'category': 'Food & Drinks', 'gesture': 'water', 'premium': False, 'desc': 'Form W-shape with index, middle, ring finger at chin.'},
             {'name': 'Eat / Food', 'category': 'Food & Drinks', 'gesture': 'fist', 'premium': False, 'desc': 'Bring flattened O-hand shape to mouth repeatedly.'},
             {'name': 'Drink', 'category': 'Food & Drinks', 'gesture': 'fist', 'premium': False, 'desc': 'Form C-shape with hand as if tipping a cup to mouth.'},
             {'name': 'Apple', 'category': 'Food & Drinks', 'gesture': 'fist', 'premium': True, 'desc': 'Twist knuckle of index finger against cheek.'},
@@ -124,28 +143,28 @@ class Command(BaseCommand):
             # Family & People
             {'name': 'Mother', 'category': 'Family & People', 'gesture': 'open_palm', 'premium': False, 'desc': 'Tap thumb of open hand to chin.'},
             {'name': 'Father', 'category': 'Family & People', 'gesture': 'open_palm', 'premium': False, 'desc': 'Tap thumb of open hand to forehead.'},
-            {'name': 'Baby / Child', 'category': 'Family & People', 'gesture': 'open_palm', 'premium': False, 'desc': 'Cradle arms side-to-side as if rocking a baby.'},
-            {'name': 'Brother', 'category': 'Family & People', 'gesture': 'index_point', 'premium': True, 'desc': 'L-hands moving from forehead down to touch.'},
-            {'name': 'Sister', 'category': 'Family & People', 'gesture': 'index_point', 'premium': True, 'desc': 'L-hands moving from chin down to touch.'},
+            {'name': 'Baby / Child', 'category': 'Family & People', 'gesture': 'open_palm', 'premium': False, 'hands': 2, 'desc': 'Cradle arms side-to-side as if rocking a baby.'},
+            {'name': 'Brother', 'category': 'Family & People', 'gesture': 'index_point', 'premium': True, 'hands': 2, 'desc': 'L-hands moving from forehead down to touch.'},
+            {'name': 'Sister', 'category': 'Family & People', 'gesture': 'index_point', 'premium': True, 'hands': 2, 'desc': 'L-hands moving from chin down to touch.'},
 
             # Basic Words
-            {'name': 'Help', 'category': 'Basic Words', 'gesture': 'fist', 'premium': False, 'desc': 'Place fist on open palm and lift up together.'},
+            {'name': 'Help', 'category': 'Basic Words', 'gesture': 'fist', 'premium': False, 'hands': 2, 'desc': 'Place fist on open palm and lift up together.'},
             {'name': 'Please', 'category': 'Basic Words', 'gesture': 'open_palm', 'premium': False, 'desc': 'Rub flat open palm in circular motion on chest.'},
             {'name': 'Thank You', 'category': 'Basic Words', 'gesture': 'open_palm', 'premium': False, 'desc': 'Touch fingers to chin and move hand forward towards person.'},
             {'name': 'Yes', 'category': 'Basic Words', 'gesture': 'fist', 'premium': False, 'desc': 'Nod S-hand shape up and down like a head nodding.'},
             {'name': 'No', 'category': 'Basic Words', 'gesture': 'index_point', 'premium': False, 'desc': 'Snap index and middle finger together with thumb.'},
-            {'name': 'More', 'category': 'Basic Words', 'gesture': 'fist', 'premium': False, 'desc': 'Tap fingertips of both hands together repeatedly.'},
-            {'name': 'Finished / All Done', 'category': 'Basic Words', 'gesture': 'open_palm', 'premium': False, 'desc': 'Flick open hands outward twice.'},
+            {'name': 'More', 'category': 'Basic Words', 'gesture': 'fist', 'premium': False, 'hands': 2, 'desc': 'Tap fingertips of both hands together repeatedly.'},
+            {'name': 'Finished / All Done', 'category': 'Basic Words', 'gesture': 'open_palm', 'premium': False, 'hands': 2, 'desc': 'Flick open hands outward twice.'},
             {'name': 'Home', 'category': 'Basic Words', 'gesture': 'fist', 'premium': True, 'desc': 'Touch fingertips from mouth to cheek.'},
-            {'name': 'Love', 'category': 'Basic Words', 'gesture': 'fist', 'premium': True, 'desc': 'Cross both fists over chest in an X shape.'},
+            {'name': 'Love', 'category': 'Basic Words', 'gesture': 'fist', 'premium': True, 'hands': 2, 'desc': 'Cross both fists over chest in an X shape.'},
 
             # Emotions & Actions
-            {'name': 'Happy', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'desc': 'Pat open palm upward against chest repeatedly.'},
-            {'name': 'Sad', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'desc': 'Bring open hands down face while tilting head slightly.'},
-            {'name': 'Play', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'desc': 'Twist Y-hand shapes at wrist back and forth.'},
-            {'name': 'Sleep', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'desc': 'Draw open hand down face closing into a flattened fist.'},
-            {'name': 'Stop', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': True, 'desc': 'Chop edge of open hand down into flat palm.'},
-            {'name': 'Want', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': True, 'desc': 'Reach out with clawed hands and pull inward.'},
+            {'name': 'Happy', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'hands': 2, 'desc': 'Pat open palm upward against chest repeatedly.', 'face': 'smile'},
+            {'name': 'Sad', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'hands': 2, 'desc': 'Bring open hands down face while tilting head slightly.', 'face': 'sad'},
+            {'name': 'Play', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'hands': 2, 'desc': 'Twist Y-hand shapes at wrist back and forth.'},
+            {'name': 'Sleep', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': False, 'desc': 'Draw open hand down face closing into a flattened fist.', 'face': 'eyes_closed'},
+            {'name': 'Stop', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': True, 'hands': 2, 'desc': 'Chop edge of open hand down into flat palm.'},
+            {'name': 'Want', 'category': 'Emotions & Actions', 'gesture': 'open_palm', 'premium': True, 'hands': 2, 'desc': 'Reach out with clawed hands and pull inward.'},
 
             # ASL Alphabet (A-Z sample)
             {'name': 'Letter A', 'category': 'ASL Alphabet', 'gesture': 'fist', 'premium': False, 'desc': 'Fist with thumb resting against side of index finger.'},
@@ -167,6 +186,15 @@ class Command(BaseCommand):
                 slug = w['name'].lower().replace(' ', '-')
             
             lms = generate_hand_landmarks(gesture_type=w['gesture'], frames=6)
+            required_hands = 2 if w.get('hands') == 2 else 1
+            if required_hands == 2:
+                lms = make_two_hand_sequence(lms)
+            face_marker = w.get('face')
+            guidance = {
+                'tip': w['desc'],
+                'placement': 'Keep your upper body and signing hand inside the guide.',
+                'movement': 'Follow the animated hand and arrow at a comfortable pace.',
+            }
             
             word, created = Word.objects.update_or_create(
                 slug=slug,
@@ -175,24 +203,14 @@ class Command(BaseCommand):
                     'category': cat_objs[w['category']],
                     'description': w['desc'],
                     'is_premium': w['premium'],
+                    'requires_face': bool(face_marker),
+                    'required_hands': required_hands,
+                    'reference_face_metrics': {'expression': face_marker} if face_marker else {},
+                    'guidance': guidance,
                     'reference_landmarks': lms
                 }
             )
             if created:
                 created_count += 1
-
-        # Ensure root superuser exists
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        if not User.objects.filter(username='root').exists():
-            User.objects.create_superuser('root', 'root@example.com', 'root')
-            self.stdout.write(self.style.SUCCESS("Superuser 'root' (heslo: 'root') byl vytvoren."))
-        else:
-            u = User.objects.get(username='root')
-            u.set_password('root')
-            u.is_superuser = True
-            u.is_staff = True
-            u.save()
-            self.stdout.write(self.style.SUCCESS("Superuser 'root' byl aktualizovan."))
 
         self.stdout.write(self.style.SUCCESS(f"Uspesne vytvoreno/aktualizovano {len(words_data)} anglickych ASL slovicek ({created_count} novych)."))

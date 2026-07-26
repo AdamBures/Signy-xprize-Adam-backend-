@@ -1,126 +1,255 @@
-# AI Tutor Znakové řeči - Backend API & Frontend SPA
+# HandSign
 
-Robustní Python/Django backend a interaktivní Vanilla JS SPA frontend navržený pro výuku americké znakové řeči (ASL) a překlad znaků v reálném čase. Aplikace je optimalizována pro výuku rodičů dětí s opožděným vývojem řeči nebo autismem.
+HandSign is a Django application for guided American Sign Language (ASL)
+practice. It includes a responsive single-page frontend, on-device MediaPipe
+hand and face tracking, landmark-based lesson evaluation, optional Gemini
+coaching, accounts, progress, friends, and Stripe checkout.
 
----
+## What works
 
-## Hlavní Funkce (Core Features)
+- Guided lessons and a searchable lesson library.
+- Browser camera capture with MediaPipe Hands (21 landmarks).
+- Optional **Help** mode with a centered animated reference hand and movement
+  arrow. The guide is hidden by default and does not interfere with assessment.
+- Automatic attempt capture: after a stable sequence has been recorded, the UI
+  confirms that the learner can lower their hands and unlocks the check button.
+- One- and two-hand lesson support. Two-hand reference frames contain 42 ordered
+  landmarks and the tracker waits until both hands are visible.
+- Non-manual facial marker capture for lessons that require it. The seed data
+  currently enables this for `Happy`, `Sad`, and `Sleep`; fingerspelling
+  letters do not require facial expression.
+- Normalized, time-resampled hand comparison on the Django backend.
+- Gemini-generated coaching when `GEMINI_API_KEY` is configured.
+- Authentication, user progress, friends, profile avatars, and Stripe Checkout.
+- Free-form clip capture and translation endpoint. Without Gemini it returns an
+  explicit demo result with zero confidence rather than pretending recognition
+  succeeded.
 
-### 🧠 1. MediaPipe Evaluace a Gemini AI Zpětná Vazba
-- **Landmark Normalization**: Vyhodnocovací algoritmus normalizuje 21 3D souřadnic ruky ( wrist-centered centrování, škálování na velikost dlaně) a provádí časové resamplování (lineární interpolace) pro nezávislost na vzdálenosti od kamery a rychlosti pohybu.
-- **Gemini AI Diagnostics**: V případě chybně provedeného znaku analyzuje přesné odchylky jednotlivých prstů a dotazuje Google Gemini API, které uživateli vrací empatické, konkrétní rady v češtině.
+Camera inference runs in the browser. An evaluation request sends landmark
+coordinates and compact facial measurements, not raw camera frames. Translation
+can additionally send a recorded clip when the user explicitly starts recording.
 
-### 📺 2. Lekce s Ukázkovým Videem (WLASL) & Ghost Overlay
-- **Local Serving**: Systém lokálně streamuje původní mp4 videa ze složky `raw_videos/` přímo do prohlížeče.
-- **Auto-Open Tutorial**: Při vstupu do lekce se uživateli automaticky otevře přehrávač videa ve smyčce (loop).
-- **Watch Example**: Během samotného cvičení s kamerou lze video kdykoliv znovu spustit tlačítkem *"Watch Video Example"*.
-- **Digital Ghost Overlay**: Přímo přes obraz webkamery uživatele se promítá poloprůhledný, animovaný skelet ruky ("duch") správného provedení znaku. Uživatel tak získává okamžitou motorickou korekci zobrazenou v reálném čase.
+## Requirements
 
-### 👥 3. Sociální Systém (Přátelé, Streaks & Doporučení)
-- **Gamified Streaks**: Výpočet denních sérií (streak) na základě dat o splněných cvičeních.
-- **Žebříček (Streaks Scoreboard)**: Seznam přátel je automaticky seřazen podle jejich denních sérií pro posílení motivace.
-- **Suggestions (Doporučení)**: Systém doporučuje ostatní uživatele aplikace, které si lze přidat jedním kliknutím.
-- **Requests & Approvals**: Podpora schvalování a odmítání příchozích žádostí o přátelství v reálném čase.
+- Python **3.11** (recommended; the pinned MediaPipe release does not support
+  every newer Python version)
+- A modern Chromium/Firefox browser
+- Internet access on first browser use for MediaPipe assets served by jsDelivr
+- Camera access via `localhost` or HTTPS
+- Optional: Docker
 
-### 💳 4. Stripe Paywall & Předplatné
-- **Stripe Checkout**: Integrované platební brány pro nákup plného přístupu.
-- **Stripe Webhooks**: Bezpečné automatické odemykání prémiových lekcí po úspěšném zpracování platby.
+## Local development
 
----
+### Linux/macOS (Bash or Zsh)
 
-## 💼 Business Model & Monetizace
+```bash
+git clone https://github.com/AdamBures/Signy-xprize-Adam-backend-.git
+cd Signy-xprize-Adam-backend-
 
-HandSign je navržen jako vysoce životaschopný produkt se zaměřením na specifický a bonitní trh:
-- **Cílová skupina**: Rodiče dětí s komunikačními bariérami (autismus, opožděný vývoj řeči, sluchová postižení). Tito rodiče mají extrémní motivaci naučit se znakovou řeč rychle, aby mohli se svými dětmi komunikovat doma.
-- **Monetizační model**: Jednorázový poplatek nebo předplatné ve výši **$10 USD (cca 230 Kč)** za neomezený přístup pro celou rodinu ("Family Unlimited Access"). Zpracování plateb probíhá plně automatizovaně přes zabezpečené rozhraní Stripe.
-- **Důkazy o tržbách**: Platební toky jsou integrované do Stripe dashboardu a simulovatelné v testovacím režimu pro doložení reálných konverzí pro účely hodnocení poroty.
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 
----
+cp .env.example .env
+python manage.py migrate
+python manage.py seed_lessons
+python manage.py runserver 8080
+```
 
-## 🚀 Budoucí rozvoj & Vize (Future Vision)
+### Fish shell
 
-Pro účely soutěže a budoucího rozvoje platformy jsou navržena tato technická a obsahová rozšíření:
-1. **Sledování obličeje a postavení (NMMs - Non-Manual Markers)**: Znakový jazyk není pouze o rukou, ale velkou roli hraje mimika a pohyb ramen. Budoucí verze rozšíří MediaPipe model o detekci mimických bodů a náklonu těla, přičemž Gemini AI bude hodnotit celkovou přirozenost projevu.
-2. **Adaptivní výuka (Adaptive Learning)**: Pokud systém detekuje, že uživatel opakovaně chybuje v konkrétní oblasti (např. nedovřený palec u písmene D), algoritmus mu automaticky do výukového plánu zařadí izolační cvičení zaměřená přesně na tuto motorickou korekci.
-3. **Situační scénáře**: Přechod od izolovaných slovíček k tématickým konverzačním celkům ("Hraní v parku", "Čas na oběd"), což umožní rodičům aplikovat znaky v reálném životě okamžitě.
-4. **Kulturní kontext neslyšících**: Integrace rad ohledně kultury neslyšících (např. jak správně navázat oční kontakt) přímo do doporučení od Gemini AI, aby se uživatelé učili jazyk v celkovém sociálním kontextu.
+```fish
+python3.11 -m venv .venv
+source .venv/bin/activate.fish
+python -m pip install -r requirements.txt
 
----
+cp .env.example .env
+python manage.py migrate
+python manage.py seed_lessons
+python manage.py runserver 8080
+```
 
-## Přehled API Endpoints (`/api/v1/`)
+Open <http://localhost:8080/>.
 
-Všechny API požadavky a odpovědi komunikují v JSON formátu a vyžadují autorizační hlavičku pro zabezpečené sekce:  
-`Authorization: Bearer <auth_token>`
+Activation is optional. The unambiguous form is:
 
-### 🔑 Autentizace
-- `POST /api/v1/auth/register/` – Registrace nového uživatele.
-- `POST /api/v1/auth/login/` – Přihlášení uživatele.
+```bash
+.venv/bin/python manage.py runserver 8080
+```
 
-### 📚 Lekce a Pokrok
-- `GET /api/v1/lessons/` – Získání seznamu dostupných lekcí (včetně odkazů na ukázková videa).
-- `GET /api/v1/me/progress/` – Získání statistik uživatele (denní série, přesnost, aktivní dny v týdnu).
-- `GET /api/v1/me/` – Získání a aktualizace detailů profilu (včetně nahrání vlastního avataru).
+Do not use `pip --break-system-packages` on Arch Linux. If `pip` reports an
+externally managed environment, the virtual environment is not active.
 
-### 🤖 Vyhodnocení a Překlad
-- `POST /api/v1/practice/evaluate/` – Odeslání MediaPipe landmarků pro vyhodnocení konkrétního slova.
-- `POST /api/v1/translate/` – Odeslání video klipu a landmarků pro překlad v reálném čase.
+### Windows PowerShell
 
-### 👥 Sociální Funkce (Přátelé)
-- `GET /api/v1/friends/` – Vrací seznam přátel, příchozí žádosti a doporučené uživatele.
-- `POST /api/v1/friends/request/` – Odeslání žádosti o přátelství (přijímá `username` nebo `to_user_id`).
-- `POST /api/v1/friends/respond/` – Schválení (`accept`) nebo zamítnutí (`reject`) žádosti (přijímá `friendship_id`).
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python manage.py migrate
+python manage.py seed_lessons
+python manage.py runserver 8080
+```
 
-### 💳 Platby
-- `POST /api/v1/billing/checkout/` – Vytvoření Stripe Checkout relace.
+## Docker
 
----
+```bash
+cp .env.example .env
+docker build -t handsign .
+docker run --rm --name handsign-app --env-file .env -p 8080:8080 handsign
+```
 
-## Lokální Spuštění (Docker Setup)
+The container applies migrations and seeds lessons on startup. To persist the
+SQLite database and local videos between container recreations:
 
-Nejsnazší cesta pro lokální spuštění celé aplikace:
+```bash
+mkdir -p .docker-data raw_videos
+docker run --rm --name handsign-app \
+  --env-file .env \
+  -e DATABASE_PATH=/app/data/db.sqlite3 \
+  -p 8080:8080 \
+  -v "$PWD/.docker-data:/app/data" \
+  -v "$PWD/raw_videos:/app/raw_videos" \
+  handsign
+```
 
-1. **Vytvoření konfiguračního souboru `.env`:**
-   Vytvořte v kořeni soubor `.env` podle předlohy `.env.example` a vyplňte klíče `GEMINI_API_KEY` a `STRIPE_SECRET_KEY`.
+Without `DATABASE_PATH` and the `/app/data` mount, container data is ephemeral.
 
-2. **Sestavení Docker obrazu:**
-   ```bash
-   docker build -t signy-backend .
-   ```
+## Configuration
 
-3. **Spuštění kontejneru:**
-   ```bash
-   docker run -d --name signy-app -p 8080:8080 signy-backend
-   ```
-   Aplikace bude běžet na adrese `http://localhost:8080/`.
+Copy `.env.example` to `.env`:
 
-4. **Nahrání ukázkových videí do kontejneru:**
-   ```bash
-   docker cp raw_videos signy-app:/app/raw_videos
-   ```
+```dotenv
+SECRET_KEY=replace-me
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.6-flash
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+FRONTEND_URL=http://localhost:8080
+# Optional, especially for Docker:
+DATABASE_PATH=/app/data/db.sqlite3
+```
 
-5. **Import WLASL databáze gest (limit 150 videí):**
-   ```bash
-   docker exec signy-app python manage.py import_raw_videos --limit 150
-   ```
+Gemini and Stripe keys are optional for camera practice and local evaluation.
+Never commit `.env`.
 
----
+Create an administrator explicitly (the seed command never creates a default
+password):
 
-## Spuštění mimo Docker (Vývojářský Režim)
+```bash
+python manage.py createsuperuser
+```
 
-1. **Aktivace virtuálního prostředí:**
-   ```bash
-   .\venv\Scripts\activate
-   ```
-2. **Instalace závislostí:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Spuštění migrací a naplnění dat:**
-   ```bash
-   python manage.py migrate
-   python manage.py seed_lessons
-   ```
-4. **Spuštění vývojového serveru:**
-   ```bash
-   python manage.py runserver 8080
-   ```
+Admin is available at <http://localhost:8080/admin/>.
+
+## Tracking and evaluation
+
+`tracker.js` runs MediaPipe Hands continuously and keeps a rolling 2.6-second
+landmark sequence. Face Mesh runs only for lessons marked `requires_face`, which
+reduces unnecessary camera processing.
+
+The tracker keeps the last complete attempt after the hands leave the frame.
+This is important for two-hand signs: the learner does not need to hold the sign
+while reaching for the mouse. The lesson displays **Sign captured** before the
+check button becomes available.
+
+Reference data can be either:
+
+- MediaPipe image coordinates in the `0..1` range, or
+- wrist-centered normalized coordinates produced by the seed/import pipeline.
+
+The help renderer computes the reference bounding box and fits it into the
+camera guide, so negative or wrist-centered values no longer draw off-screen.
+Help only affects rendering; evaluation always uses the unmodified landmark
+sequence.
+
+The backend centers each hand at the wrist, scales by palm size, resamples the
+sequence, and compares corresponding landmarks. For marked lessons, facial
+metrics contribute 20% of the final score.
+
+The evaluator intentionally allows normal differences in hand anatomy, camera
+angle, signing speed, and dominant hand. A score of 60% completes an attempt;
+feedback is limited to the two clearest corrections.
+
+ASL non-manual markers carry grammatical and emotional information, but they
+are not universally required for every word, number, or alphabet letter.
+Configure them per lesson through:
+
+- `requires_face`
+- `required_hands` (`1` or `2`)
+- `reference_face_metrics`
+- `guidance`
+
+## Importing lesson videos
+
+Place videos in `raw_videos/`, then run:
+
+```bash
+python manage.py import_raw_videos --limit 150
+```
+
+Other available commands include:
+
+```bash
+python manage.py video_to_landmarks path/to/video.mp4 "Lesson name"
+python manage.py import_video_folder path/to/folder
+```
+
+Imported videos must have a clearly visible hand. Review automatically extracted
+landmarks and lesson names before publishing them.
+
+## Main API
+
+All endpoints are under `/api/v1/`.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/health/` | Service health |
+| POST | `/auth/register/` | Registration |
+| POST | `/auth/login/` | Login |
+| GET | `/lessons/` | Lesson list |
+| GET | `/lessons/<id>/` | Lesson, guide, face flags, reference landmarks |
+| POST | `/practice/evaluate/` | Evaluate hand and optional face metrics |
+| POST | `/translate/` | Translate a recorded sequence |
+| GET | `/me/progress/` | User progress |
+| GET/PATCH | `/me/` | Profile |
+| GET/POST | `/friends/...` | Friends and requests |
+| POST | `/billing/checkout/` | Stripe Checkout session |
+
+Authenticated requests accept:
+
+```text
+Authorization: Bearer <token>
+```
+
+## Tests
+
+```bash
+python manage.py test
+python manage.py check
+python manage.py makemigrations --check --dry-run
+```
+
+Before pushing:
+
+```bash
+git status --short
+git diff --check
+python manage.py test
+```
+
+## Production notes
+
+- Set `DEBUG=False`, a strong `SECRET_KEY`, and restrictive `ALLOWED_HOSTS`.
+- Serve the site over HTTPS; browsers block camera access on insecure remote
+  origins.
+- Pin or self-host the MediaPipe browser assets if offline operation or strict
+  supply-chain control is required.
+- Replace SQLite for concurrent production workloads.
+- Configure Stripe webhooks and a real privacy policy before accepting payments.
+- Do not treat the current landmark-distance evaluator as a certified linguistic
+  assessment. Validate lesson references and non-manual marker thresholds with
+  qualified ASL users or instructors.

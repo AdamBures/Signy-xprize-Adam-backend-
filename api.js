@@ -59,7 +59,7 @@ async function request(path, { method = 'GET', body, formData, timeout = 8000, f
     }
     if (payload.access) localStorage.setItem('handsign_access_token', payload.access);
     else if (payload.token) localStorage.setItem('handsign_access_token', payload.token);
-    return { ...payload, demo: false };
+    return { ...payload, demo: Boolean(payload.demo) };
   } catch (error) {
     const staticHostMiss = error instanceof HttpError && demoFallbackEnabled() && !error.isJson && [404, 405, 501].includes(error.status);
     if (fallback !== undefined && (!(error instanceof HttpError) || staticHostMiss)) {
@@ -108,9 +108,9 @@ export const Api = {
   async updateProfile(data) {
     return request('/me/', { method: 'PATCH', body: data, fallback: { user: data } });
   },
-  async evaluateSign({ lesson, landmarks = [], language = 'en' }) {
+  async evaluateSign({ lesson, landmarks = [], faceMetrics = [], language = 'en' }) {
     return request('/practice/evaluate/', {
-      method: 'POST', body: { lesson, landmarks, language },
+      method: 'POST', body: { lesson, landmarks, face_metrics: faceMetrics, language },
       fallback: { score: 86, feedback: 'Your hand shape looks right. Try raising your hand slightly closer to your temple.' }
     });
   },

@@ -1,5 +1,8 @@
 const MAX_SEQUENCE_MS = 6000;
 const SAMPLE_INTERVAL_MS = 80;
+const MIN_SEQUENCE_FRAMES = 6;
+const TWO_HAND_SEQUENCE_FRAMES = 12;
+const TWO_HAND_GRACE_MS = 450;
 const HANDS_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240';
 const FACE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619';
 
@@ -11,6 +14,8 @@ let busy = false;
 let animationId = 0;
 let lastSampleAt = 0;
 let latestHands = [];
+let lastCompleteHands = [];
+let lastCompleteHandsAt = 0;
 let latestFace = null;
 let handSequence = [];
 let faceSequence = [];
@@ -50,10 +55,25 @@ function trimSequence(sequence, now) {
   while (sequence.length && now - sequence[0].t > MAX_SEQUENCE_MS) sequence.shift();
 }
 
+function targetSequenceFrames() {
+  return requiredHands === 2 ? TWO_HAND_SEQUENCE_FRAMES : MIN_SEQUENCE_FRAMES;
+}
+
 function sample(now) {
   if (now - lastSampleAt < SAMPLE_INTERVAL_MS) return;
   lastSampleAt = now;
-  const visibleHands = latestHands.slice(0, requiredHands);
+  let visibleHands = latestHands.slice(0, requiredHands);
+  // MediaPipe can briefly lose one hand when hands overlap during a real
+  // two-handed sign. Reuse the most recent complete pair for less than half a
+  // second so one flickering frame does not reset an otherwise valid capture.
+  if (
+    requiredHands === 2 &&
+    visibleHands.length < 2 &&
+    lastCompleteHands.length === 2 &&
+    now - lastCompleteHandsAt <= TWO_HAND_GRACE_MS
+  ) {
+    visibleHands = lastCompleteHands;
+  }
   if (visibleHands.length === requiredHands) {
     handSequence.push({
       t: now,
@@ -63,13 +83,16 @@ function sample(now) {
   if (faceEnabled && latestFace) faceSequence.push({ t: now, ...latestFace });
   trimSequence(handSequence, now);
   trimSequence(faceSequence, now);
-  const minimumFrames = 12;
-  if (handSequence.length >= minimumFrames) {
+  const targetFrames = targetSequenceFrames();
+  if (handSequence.length >= targetFrames) {
+    const firstCapture = capturedSequence.length < targetFrames;
     capturedSequence = handSequence.map(frame => clonePoints(frame.points));
     capturedFaceSequence = faceSequence.map(({ t, ...metrics }) => ({ ...metrics }));
-    window.dispatchEvent(new CustomEvent('handsign-captured', {
-      detail: { frames: capturedSequence.length, hands: requiredHands },
-    }));
+    if (firstCapture) {
+      window.dispatchEvent(new CustomEvent('handsign-captured', {
+        detail: { frames: capturedSequence.length, hands: requiredHands },
+      }));
+    }
   }
 }
 
@@ -80,20 +103,26 @@ async function init() {
     });
     hands.setOptions({
       maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.4,
-      minTrackingConfidence: 0.4,
+      // The lite model keeps tracking responsive on laptops and phones.
+      modelComplexity: 0,
+      minDetectionConfidence: 0.35,
+      minTrackingConfidence: 0.35,
     });
     hands.onResults(results => {
       latestHands = [...(results.multiHandLandmarks || [])]
         .sort((a, b) => a[0].x - b[0].x);
+      if (latestHands.length >= 2) {
+        lastCompleteHands = latestHands.slice(0, 2).map(clonePoints);
+        lastCompleteHandsAt = performance.now();
+      }
       window.dispatchEvent(new CustomEvent('handsign-tracking', {
         detail: {
           handCount: latestHands.length,
           requiredHands,
-          captureReady: capturedSequence.length >= 12,
+          captureReady: capturedSequence.length >= targetSequenceFrames(),
           faceDetected: Boolean(latestFace),
           sequenceLength: handSequence.length,
+          targetFrames: targetSequenceFrames(),
         },
       }));
     });
@@ -157,6 +186,8 @@ window.HandSignLandmarkProvider = {
     capturedSequence = [];
     capturedFaceSequence = [];
     latestHands = [];
+    lastCompleteHands = [];
+    lastCompleteHandsAt = 0;
     latestFace = null;
     running = true;
     await init();
@@ -191,6 +222,6 @@ window.HandSignLandmarkProvider = {
       : faceSequence.map(({ t, ...metrics }) => metrics);
   },
   isCaptured() {
-    return capturedSequence.length >= 12;
+    return capturedSequence.length >= targetSequenceFrames();
   },
 };

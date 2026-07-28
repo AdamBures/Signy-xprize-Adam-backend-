@@ -121,7 +121,16 @@ CORS_ALLOW_CREDENTIALS = True
 
 # External API Keys & Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.6-flash')
+GEMINI_FEEDBACK_ENABLED = os.getenv('GEMINI_FEEDBACK_ENABLED', 'false').lower() == 'true'
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite')
+GEMINI_MODELS = tuple(
+    model.strip()
+    for model in os.getenv(
+        'GEMINI_MODELS',
+        'gemini-3.6-flash,gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3-flash-preview',
+    ).split(',')
+    if model.strip()
+)
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8080')

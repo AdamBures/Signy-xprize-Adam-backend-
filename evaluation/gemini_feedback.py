@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from .gemini_client import generate_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ Be warm, positive, and specific. Respond ONLY with the advice text without quote
 """
 
     api_key = settings.GEMINI_API_KEY
-    if not api_key:
+    if not api_key or not settings.GEMINI_FEEDBACK_ENABLED:
         issue = issues[0] if issues else {
             'cs': 'Přibližte tvar ruky vzoru a znak zopakujte.',
             'en': 'Bring your hand shape closer to the reference and repeat.',
@@ -81,12 +82,9 @@ Be warm, positive, and specific. Respond ONLY with the advice text without quote
         )
 
     try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt
-        )
+        # Coaching text must never hold progress saving hostage. Try at most
+        # two models with a short deadline, then use the local helpful message.
+        response, _ = generate_with_fallback(prompt, timeout_ms=10000, max_models=2)
         if response and response.text:
             return response.text.strip()
     except Exception as e:

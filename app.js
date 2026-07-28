@@ -1,37 +1,51 @@
-import { Api } from './api.js?v=5';
-import { I18n } from './i18n.js?v=5';
+import { Api } from './api.js?v=7';
+import { I18n } from './i18n.js?v=6';
 
-// VERY VISIBLE DEBUG LOGGER FOR MOBILE
-const debugBox = document.createElement('div');
-debugBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:lime;font-family:monospace;font-size:11px;padding:10px;z-index:99999;pointer-events:none;max-height:30vh;overflow:auto;word-wrap:break-word;';
-if(document.body) document.body.appendChild(debugBox);
-else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(debugBox));
+// Keep the mobile diagnostics available to developers without exposing them
+// during normal use. Open the page with ?debug=1 when the overlay is needed.
+const debugEnabled = new URLSearchParams(window.location.search).get('debug') === '1';
+let debugBox = null;
+if (debugEnabled) {
+  debugBox = document.createElement('div');
+  debugBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:lime;font-family:monospace;font-size:11px;padding:10px;z-index:99999;pointer-events:none;max-height:30vh;overflow:auto;word-wrap:break-word;';
+  if (document.body) document.body.appendChild(debugBox);
+  else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(debugBox));
+}
 window.logDebug = function(msg) {
+  if (!debugBox) return;
   debugBox.innerHTML = `<div>[${new Date().toISOString().split('T')[1].slice(0, -1)}] ${msg}</div>` + debugBox.innerHTML;
 };
-window.logDebug('APP INITIALIZED CORRECTLY V13');
+window.logDebug('APP INITIALIZED CORRECTLY V14');
 window.addEventListener('error', e => window.logDebug(`ERR: ${e.message}`));
 window.addEventListener('unhandledrejection', e => window.logDebug(`PROMISE ERR: ${e.reason}`));
 
 const APP_ROUTES = new Set(['home', 'dashboard', 'library', 'words', 'progress', 'leaderboard', 'profile', 'practice', 'translate']);
 const savedUser = (() => { try { return JSON.parse(localStorage.getItem('handsign_user')); } catch { return null; } })();
+const LAST_LESSON_KEY = 'handsign_last_lesson';
+const savedLesson = localStorage.getItem(LAST_LESSON_KEY);
 const state = {
-  route: routeFromHash(), cameraStream: null, lesson: 'Hello',
+  route: routeFromHash(), cameraStream: null, lesson: savedLesson || 'Milk',
   recorder: null, recordedChunks: [], recordingStartedAt: 0,
-  timerId: null, autoStopTimer: null, landmarkTimer: null, landmarkFrames: [], returnRoute: 'dashboard',
+  timerId: null, autoStopTimer: null, autoEvaluateTimer: null, landmarkTimer: null, landmarkFrames: [], returnRoute: 'dashboard',
   user: savedUser || { name:'Alex Morgan', email:'alex@example.com' }, lastModalFocus:null,
   referenceLandmarks: [],
   selectedWordsFilter: 'all',
   selectedLessonsFilter: 'all',
   leaderboardTimeframe: 'all_time',
-  leaderboardCountry: 'global'
+  leaderboardCountry: 'global',
+  sessionAuthenticated: false
 };
 
 const icons = {
   hand: `<svg viewBox="0 0 24 24" fill="none"><path d="M7.5 13V5.8a1.5 1.5 0 0 1 3 0V11m0-5.9a1.5 1.5 0 0 1 3 0V11m0-4.7a1.5 1.5 0 0 1 3 0V12m0-3.5a1.5 1.5 0 0 1 3 0v6.1c0 4-2.8 7.4-6.8 7.4h-1.3c-2.5 0-4.7-1.2-6-3.2L3 15.2a1.6 1.6 0 0 1 2.4-2l2.1 1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   globe: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 12h17M12 3c2.2 2.45 3.25 5.45 3.25 9S14.2 18.55 12 21M12 3C9.8 5.45 8.75 8.45 8.75 12S9.8 18.55 12 21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  sun: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3.75" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4m10.6 10.6 1.4 1.4m0-13.4-1.4 1.4M6.7 17.3l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19.6 15.2A8.3 8.3 0 0 1 8.8 4.4 8.3 8.3 0 1 0 19.6 15.2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  copy: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke="currentColor" stroke-width="1.7"/></svg>`,
+  volume: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 10v4h3l4 3V7l-4 3H5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M15 9a4 4 0 0 1 0 6m2.5-8.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
+  chevron: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   close: '×',
-  coin: `<svg viewBox="0 0 24 24" fill="none" style="width:1.2em;height:1.2em;display:inline-block;vertical-align:middle;"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1"/><path d="M12 9v6M10 11h4M10 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`
+  coin: `<svg class="coin-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#f6c84c" stroke="#9b6a12" stroke-width="1.5"/><circle cx="12" cy="12" r="7" fill="#ffd968" stroke="#d99a20" stroke-width="1"/><path d="M8.5 8.2v7.6M15.5 8.2v7.6M8.5 12h7" fill="none" stroke="#80520b" stroke-width="2" stroke-linecap="round"/></svg>`
 };
 
 const navIcons = {
@@ -62,16 +76,12 @@ const SKIN_TONE_MODIFIERS = {
 };
 
 function applySkinTone(emoji) {
-  if (!state.user || !state.user.skin_tone) return emoji;
+  if (!emoji) return emoji;
   const tone = state.user.skin_tone || 'default';
   const modifier = SKIN_TONE_MODIFIERS[tone] || '';
-  if (!modifier) return emoji;
-  
-  const modifiable = ['🤟', '👍', '👎', '✋', '🫴', '🙏', '👐', '🤚', '👶', '👩', '👨', '👦', '👧', '👋'];
-  if (modifiable.includes(emoji)) {
-    return emoji + modifier;
-  }
-  return emoji;
+  const base = String(emoji).replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '');
+  const modifiable = ['🤟', '👍', '👎', '✋', '🫴', '🙏', '👐', '🤚', '🤲', '☝️', '👶', '👩', '👨', '👦', '👧', '👋'];
+  return modifiable.includes(base) ? `${base}${modifier}` : emoji;
 }
 
 let lessons = [];
@@ -90,17 +100,24 @@ async function fetchLessonsFromApi(url = null) {
         emoji: applySkinTone(EMOJI_MAP[w.name] || (w.name.startsWith('Letter') ? '🔤' : '🤟')),
         level: w.level || (w.is_premium ? 'Essential' : 'Beginner'),
         time: w.time || '4 min',
-        score: w.score || 'New',
+        score: w.score === 'New' || w.score == null ? 'New' : Number.parseFloat(w.score),
         video_url: w.video_url || '',
+        video_url_en: w.video_url_en || w.video_url || '',
+        video_url_ru: w.video_url_ru || '',
         category_name: w.category_name || '',
         required_hands: w.required_hands || 1,
-        requires_face: w.requires_face || false
+        requires_face: w.requires_face || false,
+        completed: Boolean(w.completed),
       }));
       
       if (url) {
         lessons = [...lessons, ...newLessons];
       } else {
         lessons = newLessons;
+      }
+      if(!state.sessionAuthenticated)applyProgressToLessons(guestProgressSummary().results);
+      if (!lessons.some(lesson => lesson.name === state.lesson) && lessons[0]) {
+        rememberLesson(lessons[0].name);
       }
       lessonsNextUrl = data.next || null;
 
@@ -157,6 +174,103 @@ function isAuthenticated() {
   return Boolean(localStorage.getItem('handsign_access_token'));
 }
 
+const GUEST_PROGRESS_KEY = 'handsign_guest_progress_v1';
+function localDateKey(value=new Date()){
+  const date=value instanceof Date?value:new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function readGuestProgress(){
+  try {
+    const stored=JSON.parse(localStorage.getItem(GUEST_PROGRESS_KEY));
+    return stored && typeof stored==='object' ? stored : {attempts:{},xp:0,coins:0};
+  } catch {
+    return {attempts:{},xp:0,coins:0};
+  }
+}
+function guestProgressSummary(){
+  const stored=readGuestProgress();
+  const attempts=Object.entries(stored.attempts||{}).map(([word,data])=>({word:Number(word),...data}));
+  const completed=attempts.filter(item=>item.completed).length;
+  const accuracy=attempts.length ? Math.round((attempts.reduce((sum,item)=>sum+Number(item.best_score||0),0)/attempts.length)*10)/10 : 0;
+  const today=new Date();const start=new Date(today);start.setHours(0,0,0,0);start.setDate(start.getDate()-((start.getDay()+6)%7));
+  const weekBars=[0,0,0,0,0,0,0];
+  const activeDates=new Set();
+  attempts.forEach(item=>{
+    const date=new Date(item.updated_at);if(Number.isNaN(date.getTime()))return;
+    activeDates.add(localDateKey(date));
+    const day=Math.floor((new Date(date.getFullYear(),date.getMonth(),date.getDate())-start)/86400000);
+    if(day>=0&&day<7)weekBars[day]=Math.max(weekBars[day],Math.round(item.best_score||0));
+  });
+  let streak=0;const cursor=new Date();cursor.setHours(0,0,0,0);
+  if(!activeDates.has(localDateKey(cursor)))cursor.setDate(cursor.getDate()-1);
+  while(activeDates.has(localDateKey(cursor))){streak+=1;cursor.setDate(cursor.getDate()-1);}
+  return {authenticated:false,streak,completed,accuracy,practice_time:`${attempts.length*3}m`,week_bars:weekBars,results:attempts};
+}
+function saveGuestAttempt(lesson,score,success){
+  const stored=readGuestProgress();stored.attempts=stored.attempts||{};
+  const previous=stored.attempts[lesson.id]||{};
+  const previousBest=Number(previous.best_score||0);
+  const improved=Number(score||0)>previousBest;
+  stored.attempts[lesson.id]={
+    word:lesson.id,word_name:lesson.name,
+    best_score:Math.max(previousBest,Number(score||0)),
+    completed:Boolean(previous.completed||success),
+    updated_at:new Date().toISOString()
+  };
+  const xpGained=improved?60:0;const coinsGained=improved?10:0;
+  stored.xp=Number(stored.xp||0)+xpGained;stored.coins=Number(stored.coins||0)+coinsGained;
+  localStorage.setItem(GUEST_PROGRESS_KEY,JSON.stringify(stored));
+  state.user.xp=stored.xp;state.user.coins=stored.coins;
+  localStorage.setItem('handsign_user',JSON.stringify(state.user));
+  return {xpGained,coinsGained,dailyBonus:0,improved,previousBest,personalBest:stored.attempts[lesson.id].best_score};
+}
+function applyProgressToLessons(results=[]){
+  const progress=new Map(results.map(item=>[Number(item.word),item]));
+  lessons.forEach(lesson=>{
+    const item=progress.get(Number(lesson.id));
+    if(!item)return;
+    lesson.score=Number(item.best_score||0);
+    lesson.completed=Boolean(item.completed);
+  });
+}
+function lessonIsComplete(lesson){
+  return Boolean(lesson?.completed) || (lesson?.score !== 'New' && Number(lesson.score) >= 60);
+}
+function lessonCanAdvance(lesson){
+  return lesson?.score !== 'New' && Number(lesson.score) > 15;
+}
+function rememberLesson(name){
+  if(!name)return;
+  state.lesson=name;
+  localStorage.setItem(LAST_LESSON_KEY,name);
+}
+async function getProgressData(){
+  if(isAuthenticated()){
+    try {
+      const data=await Api.progress();
+      state.sessionAuthenticated=Boolean(data.authenticated);
+      if(data.authenticated){
+        applyProgressToLessons(data.results||[]);
+        return data;
+      }
+    } catch(error) {
+      console.info('Progress API unavailable, using local progress:',error);
+    }
+  }
+  state.sessionAuthenticated=false;
+  const guest=guestProgressSummary();applyProgressToLessons(guest.results);
+  return guest;
+}
+function applyStreakUi(data){
+  const streak=Number(data?.streak||0);
+  const header=document.querySelector('.streak');
+  if(header)header.textContent=`🔥 ${streak} ${I18n.t('day streak')}`;
+  const side=document.querySelector('.side-footer b');
+  if(side)side.textContent=`${streak} ${I18n.t('day streak')} 🔥`;
+  const reward=document.querySelector('.streak-reward');
+  if(reward)reward.innerHTML=`${streak?'Streak active':'Practice today'} · Beat a personal best to earn ${icons.coin} 10 coins.`;
+}
+
 function routeFromHash() {
   const loggedIn = isAuthenticated();
   if (!location.hash.startsWith('#/')) return loggedIn ? 'dashboard' : 'home';
@@ -167,9 +281,11 @@ function routeFromHash() {
 function escapeHtml(value=''){return String(value).replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));}
 
 function isDark(){ return document.documentElement.dataset.theme === 'dark'; }
+function themeIcon(dark=isDark()){ return dark ? icons.sun : icons.moon; }
 function preferenceControls(){
   const languages=[['en','EN','English'],['ru','RU','Русский'],['cs','CS','Čeština']];
-  return `<div class="preference-controls"><button type="button" class="icon-btn preference-button" data-theme-toggle aria-label="Toggle theme" title="${I18n.t(isDark()?'Light':'Dark')}">${isDark()?'☀':'☾'}</button><div class="language-switcher"><button type="button" class="language-trigger" data-language-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Change language">${icons.globe}<strong>${I18n.current.toUpperCase()}</strong><span class="language-chevron">⌄</span></button><div class="language-menu" role="menu" aria-label="Change language">${languages.map(([code,short,label])=>`<button type="button" role="menuitemradio" aria-checked="${I18n.current===code}" class="language-option ${I18n.current===code?'active':''}" data-language-option="${code}"><span class="language-code">${short}</span><span>${label}</span><span class="language-check">${I18n.current===code?'✓':''}</span></button>`).join('')}</div></div></div>`;
+  const guideLanguage=I18n.current==='ru'?'RU':'EN';
+  return `<div class="preference-controls"><span class="guide-language-badge" data-guide-language title="${I18n.t('Sign guide language')}">${applySkinTone('🤟')} ${guideLanguage}</span><button type="button" class="icon-btn preference-button" data-theme-toggle aria-label="Toggle theme" title="${I18n.t(isDark()?'Light':'Dark')}">${themeIcon()}</button><div class="language-switcher"><button type="button" class="language-trigger" data-language-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Change language">${icons.globe}<strong>${I18n.current.toUpperCase()}</strong><span class="language-chevron">⌄</span></button><div class="language-menu" role="menu" aria-label="Change language">${languages.map(([code,short,label])=>`<button type="button" role="menuitemradio" aria-checked="${I18n.current===code}" class="language-option ${I18n.current===code?'active':''}" data-language-option="${code}"><span class="language-code">${short}</span><span>${label}</span><span class="language-check">${I18n.current===code?'✓':''}</span></button>`).join('')}</div></div></div>`;
 }
 function brand(){
   const target = isAuthenticated() ? 'dashboard' : 'home';
@@ -194,14 +310,15 @@ function groupLessons() {
   let lessonCounter = 1;
   for (const catName in categories) {
     const words = categories[catName];
+    let categoryUnit = 1;
     for (let i = 0; i < words.length; i += 6) {
       const chunk = words.slice(i, i + 6);
-      const isCompleted = chunk.every(w => w.score !== 'New' && parseInt(w.score, 10) >= 70);
+      const isCompleted = chunk.every(lessonIsComplete);
       const isAttempted = chunk.some(w => w.score !== 'New');
       
       lessonGroups.push({
         id: lessonCounter++,
-        name: I18n.t('Lesson {num}').replace('{num}', lessonCounter - 1),
+        name: `${catName} · Unit ${categoryUnit++}`,
         category: catName,
         words: chunk,
         isCompleted,
@@ -210,26 +327,30 @@ function groupLessons() {
     }
   }
 
-  // Split lessonGroups into sections of 10 lessons each
+  // Build substantial, Duolingo-style sections instead of splitting the path
+  // after every two lesson cards. Balance the final section so it never feels
+  // like an almost-empty leftover.
   sections = [];
-  for (let i = 0; i < lessonGroups.length; i += 10) {
+  const targetLessonsPerSection = 4;
+  const sectionCount = Math.max(1, Math.ceil(lessonGroups.length / targetLessonsPerSection));
+  const baseSize = Math.floor(lessonGroups.length / sectionCount);
+  const largerSections = lessonGroups.length % sectionCount;
+  let groupOffset = 0;
+  for (let sectionIndex = 0; sectionIndex < sectionCount; sectionIndex += 1) {
+    const sectionSize = baseSize + (sectionIndex < largerSections ? 1 : 0);
+    const sectionLessons = lessonGroups.slice(groupOffset, groupOffset + sectionSize);
     sections.push({
-      id: Math.floor(i / 10) + 1,
-      name: `${I18n.t('Section')} ${Math.floor(i / 10) + 1}`,
-      lessons: lessonGroups.slice(i, i + 10)
+      id: sectionIndex + 1,
+      name: `${I18n.t('Section')} ${sectionIndex + 1}`,
+      lessons: sectionLessons,
+      wordCount: sectionLessons.reduce((total, lesson) => total + lesson.words.length, 0),
     });
+    groupOffset += sectionSize;
   }
 }
 
 function recommendedWordCards() {
-  const filtered = lessons.filter(l => {
-    const cat = (l.category_name || '').toLowerCase();
-    const name = l.name.toLowerCase();
-    return cat.includes('základ') || cat.includes('komunikace') || cat.includes('word') || ['milk', 'water', 'mother', 'father'].includes(name);
-  });
-  const targetList = filtered.length > 0 ? filtered : lessons;
-
-  const sortedForRecommendation = [...targetList].sort((a, b) => {
+  const sortedForRecommendation = [...lessons].sort((a, b) => {
     const aIsNew = a.score === 'New';
     const bIsNew = b.score === 'New';
     
@@ -239,16 +360,18 @@ function recommendedWordCards() {
     const aIsLowScore = aScore > -1 && aScore < 70;
     const bIsLowScore = bScore > -1 && bScore < 70;
     
-    if (aIsLowScore && !bIsLowScore) return -1;
-    if (!aIsLowScore && bIsLowScore) return 1;
+    // First revisit unfinished attempts, then continue through new material
+    // in the authored order (which also represents increasing difficulty).
+    if (aIsLowScore !== bIsLowScore) return aIsLowScore ? -1 : 1;
     
     if (aIsNew && !bIsNew) return -1;
     if (!aIsNew && bIsNew) return 1;
     
-    return aScore - bScore;
+    return aIsNew&&bIsNew ? Number(a.id)-Number(b.id) : aScore-bScore;
   });
   
-  const items = sortedForRecommendation.slice(0, 4);
+  const unfinished=sortedForRecommendation.filter(item=>item.score==='New'||Number(item.score)<70);
+  const items=(unfinished.length?unfinished:sortedForRecommendation).slice(0,4);
   
   return `
     <div class="lessons-grid dashboard-lessons">
@@ -262,7 +385,7 @@ function recommendedWordCards() {
             <h3>${l.name}</h3>
             <div class="lesson-meta">
               <span>◷ ${l.time}</span>
-              <span>${l.score === 'New' ? I18n.t('New') : `${l.score}%`}</span>
+              <span>${l.score === 'New' ? I18n.t('New') : `${Math.round(l.score)}%`}</span>
             </div>
           </div>
         </article>
@@ -281,10 +404,13 @@ function lessonCards(extra='', limit=lessonGroups.length){
       return;
     }
 
+    const sectionTitles=['Foundations','Everyday communication','Growing confidence'];
+    const sectionTitle=sectionTitles[secIdx]||`Level ${secIdx+1}`;
     html += `
       <div class="section-banner" style="width:100%;text-align:center;margin:30px 0 20px;padding:16px;background:var(--forest);color:white;border-radius:18px;box-shadow:var(--shadow);">
-        <h2 style="font-size:20px;font-weight:800;margin:0;color:#fff;">${sec.name}</h2>
-        <span style="font-size:12px;opacity:0.95;">${sec.lessons.length} ${I18n.t('lessons')}</span>
+        <span class="section-step">LEARNING PATH ${secIdx+1} OF ${sections.length}</span>
+        <h2 style="font-size:20px;font-weight:800;margin:3px 0;color:#fff;">${sec.name} · ${sectionTitle}</h2>
+        <span style="font-size:12px;opacity:0.95;">${sec.lessons.length} ${I18n.t('lessons')} · ${sec.wordCount} ${I18n.t('words')}</span>
       </div>
     `;
     
@@ -297,27 +423,30 @@ function lessonCards(extra='', limit=lessonGroups.length){
       html += `<div class="tree-node-wrapper" style="flex-direction:row; justify-content:center; gap:20px; align-items:center; margin-bottom:10px;">`;
       
       rowLessons.forEach((lg, localIdx) => {
-        const globalIdx = secIdx * 10 + i + localIdx;
+        const globalIdx = lessonGroups.indexOf(lg);
         const isFirst = globalIdx === 0;
         const prevCompleted = isFirst || lessonGroups[globalIdx-1].isCompleted || lessonGroups[globalIdx-1].isAttempted;
         const isLocked = !prevCompleted && !state.user.has_premium;
         const lockIcon = isLocked ? ' 🔒' : '';
         const opacityClass = isLocked ? 'locked-node' : '';
-        const completedCount = lg.words.filter(w => w.score !== 'New' && parseInt(w.score, 10) >= 70).length;
+        const completedCount = lg.words.filter(lessonIsComplete).length;
         const progressPercent = Math.round((completedCount / lg.words.length) * 100);
+        const continueWord = lg.words.find(word=>!lessonCanAdvance(word))||lg.words.at(-1);
+        const isCurrent = lg.words.some(word=>word.name===state.lesson);
         
         html += `
-          <article class="lesson-card tree-card ${opacityClass}" tabindex="${isLocked ? '-1' : '0'}" role="button" data-lesson-group="${lg.id}" ${isLocked ? 'style="pointer-events:none;opacity:0.65;filter:grayscale(1);"' : ''}>
+          <article class="lesson-card tree-card ${opacityClass} ${isCurrent?'current-node':''}" tabindex="${isLocked ? '-1' : '0'}" role="button" data-lesson-group="${lg.id}" ${isLocked ? 'style="pointer-events:none;opacity:0.65;filter:grayscale(1);"' : ''}>
             <div class="lesson-visual">
               <span class="level">${lg.category}</span>
-              📚
+              <span class="course-icon">📚</span>
             </div>
             <div class="lesson-info">
               <h3>${lg.name}${lockIcon}</h3>
               <div class="lesson-meta">
-                <span>${lg.words.length} ${I18n.t('words')}</span>
+                <span>${completedCount}/${lg.words.length} mastered</span>
                 <span>${progressPercent}% ${I18n.t('done')}</span>
               </div>
+              <p class="course-next">${isLocked?'Complete the previous unit':`Continue: ${escapeHtml(continueWord.name)} →`}</p>
             </div>
           </article>
         `;
@@ -341,9 +470,9 @@ function lessonCards(extra='', limit=lessonGroups.length){
 function home(){ return `<div class="shell">${nav()}
   <main>
     <section class="hero"><div class="wrap hero-grid"><div><span class="eyebrow">AI-powered ASL learning</span><h1>Small signs.<br><span class="highlight">Big connections.</span></h1><p class="lead">Learn practical American Sign Language with real-time, judgment-free feedback — built for the everyday moments that matter most.</p><div class="hero-actions"><button class="btn btn-dark" data-start>Start your first lesson <span>→</span></button><button class="btn btn-ghost" data-scroll="how">See how it works</button></div><div class="trust"><div class="avatars"><span class="avatar a1">MK</span><span class="avatar a2">JS</span><span class="avatar a3">AL</span></div><div><strong>Loved by early tester families</strong>Practice anytime. Learn at your pace.</div></div></div>
-    <div class="hero-visual"><div class="camera-card"><div class="person"><div class="person-body"><div class="hair"></div><div class="head"></div><div class="shirt-neck"></div><span class="hand one">✋</span><span class="hand two">🤚</span></div></div><div class="camera-ui"><span class="live-pill"><i class="live-dot"></i> Hand tracking</span><span class="live-pill">● LIVE</span></div><div class="focus-corners"></div></div><div class="score-float"><small>Accuracy</small><div class="score">94%</div><small>Great form!</small></div><div class="lesson-float"><div class="lesson-top"><span>LESSON 01</span><b>2:14</b></div><div class="lesson-word">Hello 👋</div><div class="progress"><i style="width:68%"></i></div></div></div></div></section>
+    <div class="hero-visual"><div class="camera-card"><div class="person"><div class="person-body"><div class="hair"></div><div class="head"></div><div class="shirt-neck"></div><span class="hand one">${applySkinTone("✋")}</span><span class="hand two">${applySkinTone("🤚")}</span></div></div><div class="camera-ui"><span class="live-pill"><i class="live-dot"></i> Hand tracking</span><span class="live-pill">● LIVE</span></div><div class="focus-corners"></div></div><div class="score-float"><small>Accuracy</small><div class="score">94%</div><small>Great form!</small></div><div class="lesson-float"><div class="lesson-top"><span>LESSON 01</span><b>2:14</b></div><div class="lesson-word">Hello ${applySkinTone("👋")}</div><div class="progress"><i style="width:68%"></i></div></div></div></div></section>
     <section class="logos"><div class="wrap">Designed to connect with<div class="logo-row"><span class="partner"><b>G</b> Google Cloud</span><span class="partner"><b>◇</b> MediaPipe</span><span class="partner"><b>✦</b> Gemini</span><span class="partner"><b>S</b> Stripe</span></div></div></section>
-    <section id="how" class="section section-white"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Made for real life</span><h2>From camera on to confident in three simple steps.</h2></div><p class="section-sub">No special equipment or prior experience. HandSign works right in your browser and meets you where you are.</p></div><div class="steps"><article class="step"><span class="step-no">01 — PICK</span><span class="step-icon">☝️</span><h3>Choose a useful word</h3><p>Start with what your family needs today — from “more” and “milk” to feelings and routines.</p></article><article class="step"><span class="step-no">02 — PRACTICE</span><span class="step-icon">🤟</span><h3>Sign to your camera</h3><p>Our hand tracking follows your movement privately, directly in your browser, in real time.</p></article><article class="step"><span class="step-no">03 — CONNECT</span><span class="step-icon">✨</span><h3>Get kind, clear feedback</h3><p>Receive specific coaching on hand shape, placement and motion — then celebrate your progress.</p></article></div></div></section>
+    <section id="how" class="section section-white"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Made for real life</span><h2>From camera on to confident in three simple steps.</h2></div><p class="section-sub">No special equipment or prior experience. HandSign works right in your browser and meets you where you are.</p></div><div class="steps"><article class="step"><span class="step-no">01 — PICK</span><span class="step-icon">${applySkinTone("☝️")}</span><h3>Choose a useful word</h3><p>Start with what your family needs today — from “more” and “milk” to feelings and routines.</p></article><article class="step"><span class="step-no">02 — PRACTICE</span><span class="step-icon">${applySkinTone("🤟")}</span><h3>Sign to your camera</h3><p>Our hand tracking follows your movement privately, directly in your browser, in real time.</p></article><article class="step"><span class="step-no">03 — CONNECT</span><span class="step-icon">✨</span><h3>Get kind, clear feedback</h3><p>Receive specific coaching on hand shape, placement and motion — then celebrate your progress.</p></article></div></div></section>
     <section class="translator-banner"><div class="wrap translator-banner-inner"><div><span class="eyebrow">Free sign translator</span><h2>Show it. We’ll put it into words.</h2><p>Turn on your camera, sign naturally, and get a text translation you can copy or hear aloud.</p></div><button class="btn btn-lime" data-route="translate">Open free translator →</button></div></section>
     <section id="lessons" class="section"><div class="wrap"><div class="section-head"><div><span class="eyebrow">Explore lessons</span><h2>Start with words that open doors.</h2></div><button class="btn btn-ghost" data-route="library">View all lessons →</button></div><div id="homeLessonsContainer">${lessons.length === 0 ? skeletonRecommendedCards() : lessonCards('',4)}</div></div></section>
     <section id="stories" class="quote"><div class="wrap quote-inner"><div class="quote-portrait">👩🏽<span class="quote-bubble">Day 18 · 12 signs learned</span></div><div><span class="eyebrow">A little win, a huge moment</span><blockquote>“The first time Leo signed ‘more’ at dinner, we both understood each other without a meltdown. I cried happy tears.”</blockquote><cite><strong>Maya & Leo</strong><br>HandSign pilot family</cite></div></div></section>
@@ -354,7 +483,7 @@ const sideItems = [
   ['dashboard','Home'], ['library','Lessons'], ['words','Words'], ['translate','Translate'],
   ['progress','Progress'], ['leaderboard','Leaderboard'], ['profile','Profile']
 ];
-function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${I18n.t(label)}</span></button>`).join('')}</nav><button class="side-footer" data-route="progress"><b>0 day streak 🔥</b><p>${I18n.t('Practice one word today to keep it going.')}</p></button></aside>`;}
+function sidebar(){const activeRoute=state.route==='practice'?'library':state.route;return `<aside class="sidebar">${brand()}<nav class="side-nav" aria-label="Application navigation">${sideItems.map(([route,label])=>`<button class="side-link ${activeRoute===route?'active':''}" data-route="${route}" aria-label="${label}" title="${label}" aria-current="${activeRoute===route?'page':'false'}"><span class="side-icon">${navIcons[route]}</span><span class="side-label">${I18n.t(label)}</span></button>`).join('')}</nav><section class="side-footer" aria-label="Streak and personal-best reward"><b>0 day streak 🔥</b><p class="streak-reward">Beat a personal best to earn ${icons.coin} 10 coins.</p></section></aside>`;}
 function appHeader(title,subtitle){
   const avatar = state.user.avatar || '';
   const isImage = avatar.startsWith('data:image') || avatar.startsWith('http');
@@ -414,7 +543,7 @@ function skeletonRecommendedCards() {
   `;
 }
 
-function dashboard(){const firstName=escapeHtml(state.user.name?.split(' ')[0]||'Alex');const greeting=`${I18n.t('Good morning')}, ${firstName} 👋`;return appShell(`<div class="dash-grid"><section class="continue"><span class="eyebrow">Continue learning</span><h2>Everyday essentials</h2><p>Word 3 of 8 · You're learning words that make daily routines easier.</p><div class="progress"><i style="width:37%"></i></div><button class="btn btn-lime" data-lesson="More">Continue practicing →</button></section><section class="stat-card"><span class="eyebrow">Weekly goal</span><div class="stat-ring"><strong>5 / 7</strong></div><p style="text-align:center;color:var(--muted);font-size:13px">Two more days to reach your goal</p></section></div><section class="dashboard-section"><div class="dashboard-title"><h2>Recommended for you</h2><button class="btn btn-ghost small-btn" data-route="library">See all</button></div><div id="dashboardRecommendedContainer">${skeletonRecommendedCards()}</div></section>`,greeting,'Ready for one small step forward?');}
+function dashboard(){const firstName=escapeHtml(state.user.name?.split(' ')[0]||'Alex');const greeting=`${I18n.t('Good morning')}, ${firstName} ${applySkinTone("👋")}`;const next=recommendedWordCards();return appShell(`<div class="dash-grid"><section class="continue" style="--continue-hand:'${applySkinTone("🤟")}'"><span class="eyebrow">Continue learning</span><h2>Everyday essentials</h2><p>Keep building your vocabulary one useful sign at a time.</p><div class="progress"><i style="width:5%"></i></div><button class="btn btn-lime" data-lesson="${escapeHtml((lessons.find(l=>l.score==='New'||Number(l.score)<70)||lessons[0])?.name||'Milk')}">Continue practicing →</button></section><section class="stat-card"><span class="eyebrow">Weekly goal</span><div class="stat-ring"><strong>0 / 7</strong></div><p style="text-align:center;color:var(--muted);font-size:13px">Practice today to keep your streak growing</p></section></div><section class="dashboard-section"><div class="dashboard-title"><h2>Recommended for you</h2><button class="btn btn-ghost small-btn" data-route="library">See all</button></div><div id="dashboardRecommendedContainer">${lessons.length?next:skeletonRecommendedCards()}</div></section>`,greeting,'Ready for one small step forward?');}
 function skeletonLessonCards() {
   return `
     <div class="skill-tree library-lessons">
@@ -499,6 +628,17 @@ function wordsPage() {
   `, I18n.t('Words'), I18n.t('Practice any word directly'));
 }
 function progressPage(){return appShell(`<div class="metric-grid"><article class="metric"><span>Signs learned</span><strong class="skeleton-text">...</strong><small id="metricCompletedSub">Completed lessons</small></article><article class="metric"><span>Average accuracy</span><strong class="skeleton-text">...</strong><small id="metricAccuracySub">Based on attempts</small></article><article class="metric"><span>Practice time</span><strong class="skeleton-text">...</strong><small id="metricTimeSub">Across 0 attempts</small></article></div><section class="progress-panel"><div class="dashboard-title"><h2>Your week</h2><span class="muted">Goal: 5 minutes a day</span></div><div class="week-bars">${['M','T','W','T','F','S','S'].map((d,i)=>`<div><i style="height:${[55,82,45,92,68,30,15][i]}%"></i><span>${d}</span></div>`).join('')}</div></section><section class="progress-panel"><div class="dashboard-title"><h2>Friends & Community</h2><span class="muted">Connect with others to compare streaks!</span></div><div class="social-grid"><div class="social-column"><h3>Active Streaks</h3><div id="friendsList" class="friends-list-container"><p class="muted small-msg">Loading friends...</p></div></div><div class="social-column"><div class="social-subcolumn" id="pendingRequestsContainer" style="display:none;margin-bottom:20px"><h3>Pending Invites</h3><div id="pendingRequestsList"></div></div><h3>Suggested for You</h3><div id="suggestionsList" class="suggestions-list-container"><p class="muted small-msg">Loading suggestions...</p></div><div class="add-friend-box" style="margin-top:20px"><h3>Add Friend by Username</h3><div class="search-bar"><input type="text" id="addFriendUsernameInput" placeholder="Enter username..."><button class="btn btn-lime small-btn" id="addFriendSubmitBtn">Add</button></div><p id="addFriendStatusMsg" class="status-msg" style="display:none;font-size:12px;margin-top:5px"></p></div></div></div></section>`,'Your progress','Every practice session is a meaningful step.');}
+function profileSelect(id, options, selectedValue){
+  const selected=options.find(option=>option.value===selectedValue)||options[0];
+  return `<span class="select-control custom-select" data-custom-select>
+    <select id="${id}" class="custom-select-source" tabindex="-1" aria-hidden="true">${options.map(option=>`<option value="${escapeHtml(option.value)}" ${option.value===selected.value?'selected':''}>${escapeHtml(option.label)}</option>`).join('')}</select>
+    <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+      <span data-custom-select-label>${escapeHtml(selected.label)}</span><span class="select-chevron">${icons.chevron}</span>
+    </button>
+    <div class="custom-select-menu" role="listbox">${options.map(option=>`<button type="button" role="option" aria-selected="${option.value===selected.value}" data-custom-select-value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</button>`).join('')}</div>
+  </span>`;
+}
+
 function profilePage(){
   const t = I18n.t;
   const isSubscribed = state.user.is_subscribed;
@@ -507,6 +647,16 @@ function profilePage(){
   const avatarPreviewHtml = isCustomImage
     ? `<img id="avatarPreviewDisplay" src="${avatar}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid var(--lime,#a6f0c6);">`
     : `<span id="avatarPreviewDisplay" style="font-size:36px;background:var(--bg-subtle,#f0f4ec);padding:8px;border-radius:50%;line-height:1;display:inline-block;">${avatar}</span>`;
+  const avatarOptions=[
+    {value:'',label:t('CustomUploadedImage')},{value:'👤',label:'👤 Default profile'},
+    {value:'👩',label:'👩 Woman'},{value:'👨',label:'👨 Man'},{value:'👧',label:'👧 Girl'},
+    {value:'👦',label:'👦 Boy'},{value:'🦊',label:'🦊 Fox'},{value:'🦁',label:'🦁 Lion'},{value:'🐼',label:'🐼 Panda'}
+  ];
+  const skinOptions=[
+    {value:'default',label:`${t('ToneDefault')} 🤟`},{value:'light',label:`${t('ToneLight')} 🤟🏻`},
+    {value:'medium_light',label:`${t('ToneMediumLight')} 🤟🏼`},{value:'medium',label:`${t('ToneMedium')} 🤟🏽`},
+    {value:'medium_dark',label:`${t('ToneMediumDark')} 🤟🏾`},{value:'dark',label:`${t('ToneDark')} 🤟🏿`}
+  ];
 
   return appShell(`
     <div class="settings-grid">
@@ -558,17 +708,7 @@ function profilePage(){
           </label>
 
           <label class="field">${t('OrSelectPresetIcon') || 'Or Select Preset Icon'}
-            <select id="userAvatarInput" style="width:100%;padding:10px;font-size:16px;">
-              <option value="" ${isCustomImage?'selected':''}>${t('CustomUploadedImage') || 'Custom Uploaded Image'}</option>
-              <option value="👤" ${avatar==='👤'?'selected':''}>👤 Default Profile</option>
-              <option value="👩" ${avatar==='👩'?'selected':''}>👩 Woman</option>
-              <option value="👨" ${avatar==='👨'?'selected':''}>👨 Man</option>
-              <option value="👧" ${avatar==='👧'?'selected':''}>👧 Girl</option>
-              <option value="👦" ${avatar==='👦'?'selected':''}>👦 Boy</option>
-              <option value="🦊" ${avatar==='🦊'?'selected':''}>🦊 Fox</option>
-              <option value="🦁" ${avatar==='🦁'?'selected':''}>🦁 Lion</option>
-              <option value="🐼" ${avatar==='🐼'?'selected':''}>🐼 Panda</option>
-            </select>
+            ${profileSelect('userAvatarInput',avatarOptions,isCustomImage?'':avatar)}
           </label>
           <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;">
             <h3 style="margin-bottom:8px;">${t('AdvancedSettings') || 'Advanced Settings'}</h3>
@@ -579,14 +719,7 @@ function profilePage(){
               <input id="userPronounsInput" type="text" value="${escapeHtml(state.user.pronouns || '')}" placeholder="e.g. he/him, they/them">
             </label>
             <label class="field">${t('SkinTonePreference') || 'Skin Tone Preference'}
-              <select id="userSkinToneInput" style="width:100%;padding:10px;font-size:16px;">
-                <option value="default" ${state.user.skin_tone==='default'?'selected':''}>${t('ToneDefault') || 'Default'} 🤟</option>
-                <option value="light" ${state.user.skin_tone==='light'?'selected':''}>${t('ToneLight') || 'Light'} 🤟🏻</option>
-                <option value="medium_light" ${state.user.skin_tone==='medium_light'?'selected':''}>${t('ToneMediumLight') || 'Medium-Light'} 🤟🏼</option>
-                <option value="medium" ${state.user.skin_tone==='medium'?'selected':''}>${t('ToneMedium') || 'Medium'} 🤟🏽</option>
-                <option value="medium_dark" ${state.user.skin_tone==='medium_dark'?'selected':''}>${t('ToneMediumDark') || 'Medium-Dark'} 🤟🏾</option>
-                <option value="dark" ${state.user.skin_tone==='dark'?'selected':''}>${t('ToneDark') || 'Dark'} 🤟🏿</option>
-              </select>
+              ${profileSelect('userSkinToneInput',skinOptions,state.user.skin_tone||'default')}
             </label>
           </div>
           <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;">
@@ -614,17 +747,35 @@ function profilePage(){
   `,'Profile & settings','Manage your user account, security and custom avatar.');
 }
 
+function guideVideoForLesson(lesson){
+  const russian=I18n.current==='ru';
+  return {
+    url:russian?(lesson?.video_url_ru||''):(lesson?.video_url_en||lesson?.video_url||''),
+    language:russian?'Russian':'English',
+  };
+}
+function refreshGuideButton(){
+  const button=document.querySelector('#openVideoBtn');
+  const lesson=lessons.find(item=>item.name===state.lesson);
+  if(!button||!lesson)return;
+  const guide=guideVideoForLesson(lesson);
+  button.classList.toggle('unavailable',!guide.url);
+  button.innerHTML=`<span>📺</span> ${guide.url?`Watch ${guide.language} sign guide`:`${guide.language} guide coming soon`}`;
+}
+
 function practice(){
   const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library';
+  if(l && l.name!==state.lesson)rememberLesson(l.name);
   state.requiredHands=l.required_hands||1;state.requiresFace=l.requires_face||false;
   const rawTip=l.guidance?.tip||l.description||'Keep your hand relaxed and clearly visible.';
   const tip=escapeHtml(I18n.lessonTip(l.name,rawTip));
   const genericPosition=l.required_hands===2?'Keep both hands visible inside the guide.':'Keep your signing hand visible inside the guide.';
   const handInstruction=escapeHtml(I18n.lessonPosition(l.name,genericPosition));
   const movementInstruction=escapeHtml(I18n.lessonMovement(l.name,'Follow the animated skeleton from start to finish, then lower your hands.'));
-  return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><canvas id="overlayCanvas" class="guide-canvas ${state.helpEnabled?'visible':''}" aria-hidden="true"></canvas><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="trackingStatus"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"><span class="hand-count-guide" id="handCountGuide">${l.required_hands===2?'2 hands':'1 hand'}</span></div><div class="capture-banner" id="captureBanner">Show the complete sign — it will be captured automatically</div><div class="camera-help"><label class="help-toggle"><input type="checkbox" id="helpToggle" ${state.helpEnabled?'checked':''}><span>✨ ${I18n.t('Help')}</span></label><small id="helpHint">Shows shape, position and movement</small></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div>${l.video_url ? `<button class="watch-video-btn" id="openVideoBtn"><span>📺</span> Watch Video Example</button>` : ''}<div class="coaching-steps"><div><b>1</b><span><strong>Hand shape</strong><small id="lessonTip">${tip}</small></span></div><div><b>2</b><span><strong>Position</strong><small>${handInstruction}</small></span></div><div><b>3</b><span><strong>Movement</strong><small>${movementInstruction}</small></span></div></div><div class="face-requirement" id="faceRequirement" ${l.requires_face?'':'hidden'}>🙂 This sign also uses facial expression. Keep your full face visible.</div><div class="attempt-state" id="attemptState"><i></i><span><strong>Waiting for your sign</strong><small>The check button will unlock when the movement is captured.</small></span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign" disabled>Check my sign</button></div></aside></main>`);}
+  const guide=guideVideoForLesson(l);
+  return immersiveShell(`<main class="practice"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${l.emoji}</div><h2>Ready when you are</h2><p>Turn on your camera and place your upper body inside the guide.</p></div></div><video id="camera" autoplay muted playsinline></video><canvas id="overlayCanvas" class="guide-canvas ${state.helpEnabled?'visible':''}" aria-hidden="true"></canvas><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="trackingStatus"><i class="live-dot"></i> Private on-device tracking</span>${preferenceControls()}</div></header><div class="tracking-box"><span class="hand-count-guide" id="handCountGuide">${l.required_hands===2?'2 hands':'1 hand'}</span></div><div class="capture-banner" id="captureBanner">Show the complete sign — it will be captured automatically</div><div class="camera-help"><label class="help-toggle"><input type="checkbox" id="helpToggle" ${state.helpEnabled?'checked':''}><span>✨ ${I18n.t('Help')}</span></label><small id="helpHint">Shows shape, position and movement</small></div></div></section><aside class="practice-side"><span class="eyebrow">Guided lesson · Beginner</span><h1>${l.name}</h1><p>Watch the example, then mirror the movement. Keep your hand relaxed and clearly visible.</p><div class="demo-sign">${l.emoji}</div><button class="watch-video-btn ${guide.url?'':'unavailable'}" id="openVideoBtn"><span>📺</span> ${guide.url?`Watch ${guide.language} sign guide`:`${guide.language} guide coming soon`}</button><div class="coaching-steps"><div><b>1</b><span><strong>Hand shape</strong><small id="lessonTip">${tip}</small></span></div><div><b>2</b><span><strong>Position</strong><small>${handInstruction}</small></span></div><div><b>3</b><span><strong>Movement</strong><small>${movementInstruction}</small></span></div></div><div class="face-requirement" id="faceRequirement" ${l.requires_face?'':'hidden'}>🙂 This sign also uses facial expression. Keep your full face visible.</div><div class="attempt-state" id="attemptState"><i></i><span><strong>Waiting for your sign</strong><small>The check button will unlock when the movement is captured.</small></span></div><div class="feedback" id="feedback"></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-ghost" id="checkSign" disabled>Check my sign</button><button class="btn btn-lime" id="nextSign" hidden>Next sign →</button></div></aside></main>`);}
 
-function translatePage(){const back=state.returnRoute==='home'?'home':'dashboard';return immersiveShell(`<main class="practice translate-page"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">🤟</div><h2>Your signing space</h2><p>Turn on the camera, then press “Start signing”. Use natural pauses between phrases.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="recordingPill"><i class="live-dot"></i> Ready to translate</span>${preferenceControls()}</div></header><div class="tracking-box"></div><div class="record-timer" id="recordTimer">00:00</div></div></section><aside class="practice-side translator-side"><span class="eyebrow">Free translation · ASL → English</span><h1>Sign freely</h1><p>Show a phrase of up to 20 seconds. HandSign sends the captured sequence to <code>POST /translate/</code> and returns plain text.</p><div class="translation-result empty" id="translationResult"><span>Translation will appear here</span><strong>...</strong></div><div class="translation-tools"><button class="tool-button" id="copyTranslation" disabled>Copy text</button><button class="tool-button" id="speakTranslation" disabled>Read aloud</button></div><div class="privacy-note">🔒 <span>Camera data is used only for this translation. In demo mode, no clip leaves your browser.</span></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-lime" id="recordToggle">Start signing</button></div></aside></main>`);}
+function translatePage(){const back=state.returnRoute==='home'?'home':'dashboard';return immersiveShell(`<main class="practice translate-page"><section class="practice-camera"><div class="camera-empty" id="cameraEmpty"><div><div class="big-icon">${applySkinTone("🤟")}</div><h2>Your signing space</h2><p>Turn on the camera, then press “Start signing”. Use natural pauses between phrases.</p></div></div><video id="camera" autoplay muted playsinline></video><div class="practice-overlay"><header class="practice-head"><button class="icon-btn" data-route="${back}" aria-label="Go back">←</button><div class="practice-head-actions"><span class="live-pill" id="recordingPill"><i class="live-dot"></i> Ready to translate</span>${preferenceControls()}</div></header><div class="tracking-box"></div><div class="record-timer" id="recordTimer">00:00</div></div></section><aside class="practice-side translator-side"><span class="eyebrow">Free translation · ASL → English</span><h1>Sign freely</h1><p>Show a phrase of up to 20 seconds. HandSign sends the captured sequence to <code>POST /translate/</code> and returns plain text.</p><div class="translation-result empty" id="translationResult"><span>Translation will appear here</span><strong>...</strong></div><div class="translation-tools"><button class="tool-button" id="copyTranslation" disabled>${icons.copy}<span>Copy text</span></button><button class="tool-button" id="speakTranslation" disabled>${icons.volume}<span>Read aloud</span></button></div><div class="privacy-note">🔒 <span>Camera data is used only for this translation. In demo mode, no clip leaves your browser.</span></div><div class="practice-actions"><button class="btn btn-dark" id="cameraToggle">Turn on camera</button><button class="btn btn-lime" id="recordToggle">Start signing</button></div></aside></main>`);}
 
 function modal(type){
   const info = {
@@ -695,7 +846,7 @@ function modal(type){
           <div style="display:flex;flex-direction:column;gap:10px;margin-top:15px;max-height:350px;overflow-y:auto;padding-right:4px;">
             ${lg.words.map((w, idx) => {
               const isFirstWord = idx === 0;
-              const prevWordDone = isFirstWord || (lg.words[idx-1].score !== 'New');
+              const prevWordDone = isFirstWord || lessonCanAdvance(lg.words[idx-1]);
               const isWordLocked = !prevWordDone && !state.user.has_premium;
               const wordLockIcon = isWordLocked ? ' 🔒' : '';
               
@@ -723,7 +874,11 @@ function modal(type){
   }
   if(type==='video'){
     const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
-    return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(560px,100%);"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign · Video Tutorial</span><h2 id="modalTitle">${escapeHtml(l.name)}</h2><div class="lesson-video-container"><video src="${l.video_url}" autoplay loop controls playsinline style="width:100%;aspect-ratio:16/9;border-radius:16px;background:#000;border:1px solid var(--line);object-fit:cover;margin:15px 0;"></video></div><button class="btn btn-dark" data-close>I'm Ready / Start Lesson</button></section></div>`;
+    const guide=guideVideoForLesson(l);
+    const content=guide.url
+      ? `<div class="lesson-video-container"><video src="${escapeHtml(guide.url)}" autoplay loop controls playsinline style="width:100%;aspect-ratio:16/9;border-radius:16px;background:#000;border:1px solid var(--line);object-fit:cover;margin:15px 0;"></video></div>`
+      : `<div class="guide-unavailable" role="status"><span>📹</span><strong>${guide.language} sign guide is not uploaded yet</strong><p>The written hand-shape, position and movement steps below are still available for practice.</p></div>`;
+    return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:min(560px,100%);"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign · ${guide.language} Video Guide</span><h2 id="modalTitle">${escapeHtml(l.name)}</h2>${content}<button class="btn btn-dark" data-close>Continue practice</button></section></div>`;
   }
   if(type==='profile')return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign</span><h2 id="modalTitle">Edit profile</h2><p>Keep your learning profile up to date.</p><form class="form" id="profileForm"><label class="field">Your name<input name="name" required value="${escapeHtml(state.user.name)}"></label><label class="field">Email address<input name="email" required type="email" value="${escapeHtml(state.user.email)}"></label><button class="btn btn-dark" type="submit">Save changes</button></form></section></div>`;
   if(info[type]) return `<div class="modal-backdrop" id="modal"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="icon-btn modal-close" data-close aria-label="Close">${icons.close}</button><span class="eyebrow">HandSign</span><h2 id="modalTitle">${info[type][0]}</h2><p>${info[type][1]}</p><button class="btn btn-dark" data-close>Got it</button></section></div>`;
@@ -870,14 +1025,15 @@ async function render(){
   document.querySelector('#app').innerHTML = (views[state.route] || home)();
   I18n.apply(document.querySelector('#app')); bind(); window.scrollTo(0,0);
   if(lessons.length === 0) fetchLessonsFromApi();
-  if(state.route!=='home' && state.route!=='') updateGlobalStreak();
+  if(!['home','','dashboard','progress','profile'].includes(state.route)) updateGlobalStreak();
   if(state.route==='dashboard') hydrateDashboard();
   if(state.route==='progress') hydrateProgressPage();
+  if(state.route==='profile') hydrateProfilePage();
   if(state.route==='leaderboard') hydrateLeaderboard();
   if(state.route==='practice'){
     const l=lessons.find(x=>x.name===state.lesson)||lessons[0];
     if(l){
-      if(l.video_url){
+      if(guideVideoForLesson(l).url){
         setTimeout(()=>showModal('video'),150);
       }
       loadLessonReference(l.id);
@@ -889,19 +1045,9 @@ async function render(){
 }
 
 async function updateGlobalStreak() {
-  if (!isAuthenticated()) {
-    const streakEl = document.querySelector('.streak');
-    if (streakEl) streakEl.textContent = `🔥 0 ${I18n.t('day streak')}`;
-    const sideStreak = document.querySelector('.side-footer b');
-    if (sideStreak) sideStreak.textContent = `0 ${I18n.t('day streak')} 🔥`;
-    return;
-  }
   try {
-    const data = await Api.progress();
-    const streakEl = document.querySelector('.streak');
-    if (streakEl && data.streak !== undefined) streakEl.textContent = `🔥 ${data.streak} ${I18n.t('day streak')}`;
-    const sideStreak = document.querySelector('.side-footer b');
-    if (sideStreak && data.streak !== undefined) sideStreak.textContent = `${data.streak} ${I18n.t('day streak')} 🔥`;
+    const data = await getProgressData();
+    applyStreakUi(data);
   } catch (e) {
     console.info('Global streak update info:', e);
   }
@@ -934,11 +1080,8 @@ async function loadLessonReference(id) {
 }
 async function hydrateDashboard(){
   try {
-    const data = await Api.progress();
-    const streak = document.querySelector('.streak');
-    if (streak && data.streak !== undefined) streak.textContent = `🔥 ${data.streak} ${I18n.t('day streak')}`;
-    const sideStreak = document.querySelector('.side-footer b');
-    if (sideStreak && data.streak !== undefined) sideStreak.textContent = `${data.streak} ${I18n.t('day streak')} 🔥`;
+    const data = await getProgressData();
+    applyStreakUi(data);
 
     const continueDesc = document.querySelector('.continue p');
     if (continueDesc && data.completed !== undefined) {
@@ -951,15 +1094,18 @@ async function hydrateDashboard(){
     }
     const statRing = document.querySelector('.stat-ring strong');
     if (statRing && data.completed !== undefined) {
-      statRing.textContent = `${Math.min(7, data.completed)} / 7`;
+      const activeDays=(data.week_bars||[]).filter(value=>value>0).length;
+      statRing.textContent = `${activeDays} / 7`;
     }
+    const recContainer=document.querySelector('#dashboardRecommendedContainer');
+    if(recContainer){recContainer.innerHTML=recommendedWordCards();bindLessonCards();}
   } catch (e) {
     console.info('Dashboard hydration info:', e);
   }
 }
 async function hydrateProgressPage(){
   try {
-    const data = await Api.progress();
+    const data = await getProgressData();
     const metrics = document.querySelectorAll('.metric-grid .metric strong');
     if (metrics.length >= 3) {
       metrics.forEach(m => m.classList.remove('skeleton-text'));
@@ -967,10 +1113,7 @@ async function hydrateProgressPage(){
       if (data.accuracy !== undefined) metrics[1].textContent = `${data.accuracy}%`;
       if (data.practice_time !== undefined) metrics[2].textContent = data.practice_time;
     }
-    const streak = document.querySelector('.streak');
-    if (streak && data.streak !== undefined) streak.textContent = `🔥 ${data.streak} ${I18n.t('day streak')}`;
-    const sideStreak = document.querySelector('.side-footer b');
-    if (sideStreak && data.streak !== undefined) sideStreak.textContent = `${data.streak} ${I18n.t('day streak')} 🔥`;
+    applyStreakUi(data);
 
     const subCompleted = document.getElementById('metricCompletedSub');
     const subAccuracy = document.getElementById('metricAccuracySub');
@@ -995,10 +1138,34 @@ async function hydrateProgressPage(){
         }
       });
     }
-    hydrateSocialPanel();
+    if(data.authenticated)hydrateSocialPanel();
+    else {
+      const social=document.querySelector('.social-grid');
+      if(social)social.innerHTML='<p class="muted">Sign in to use friends and community features.</p>';
+    }
   } catch (e) {
     console.info('Progress hydration info:', e);
   }
+}
+
+async function hydrateProfilePage(){
+  try{
+    const data=await getProgressData();
+    applyStreakUi(data);
+    const signs=document.querySelector('#profileSignsLearned');
+    const accuracy=document.querySelector('#profileAccuracy');
+    const time=document.querySelector('#profilePracticeTime');
+    if(signs)signs.textContent=String(data.completed||0);
+    if(accuracy)accuracy.textContent=`${data.accuracy||0}%`;
+    if(time)time.textContent=data.practice_time||'0m';
+    const recent=document.querySelector('#profileRecentSigns');
+    if(recent){
+      const items=[...(data.results||[])].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
+      recent.innerHTML=items.length
+        ? items.map(item=>`<span class="recent-sign-chip">${escapeHtml(item.word_name||lessons.find(l=>Number(l.id)===Number(item.word))?.name||'Sign')} · ${Math.round(item.best_score||0)}%</span>`).join('')
+        : '<span class="muted">Complete a lesson to see it here.</span>';
+    }
+  }catch(error){console.info('Profile hydration info:',error);}
 }
 
 let friendsDataList = [];
@@ -1164,7 +1331,7 @@ function bindModal(type){
   document.querySelector('#authForm')?.addEventListener('submit',async e=>{
     e.preventDefault(); const form=e.currentTarget, button=form.querySelector('button[type="submit"]');
     const data=Object.fromEntries(new FormData(form)); button.disabled=true; button.textContent=I18n.t('Connecting…');
-    try { const result=form.dataset.authType==='login'?await Api.login(data):await Api.register(data);if(result.user){state.user={...state.user,...result.user};localStorage.setItem('handsign_user',JSON.stringify(state.user));} closeModal(); toast(result.demo?'Demo account ready — connect Django in Profile.':'Welcome to HandSign!'); setTimeout(()=>go('dashboard'),350); }
+    try { const result=form.dataset.authType==='login'?await Api.login(data):await Api.register(data);if(result.user){state.sessionAuthenticated=!result.demo;state.user={...state.user,...result.user};localStorage.setItem('handsign_user',JSON.stringify(state.user));} closeModal(); toast(result.demo?'Demo account ready — connect Django in Profile.':'Welcome to HandSign!'); setTimeout(()=>go('dashboard'),350); }
     catch(error){ button.disabled=false; button.textContent=I18n.t('Try again'); toast(error.message); }
   });
 
@@ -1500,7 +1667,8 @@ async function startCamera(){
   }
   catch(error){
     window.logDebug('startCamera caught error: ' + error.message);
-    toast('Camera access was blocked. Allow it in browser settings.');
+    const friendly=friendlyError(error,'camera');
+    toast(`${friendly.title}. ${friendly.message}`);
     return false;
   }
 }
@@ -1514,7 +1682,7 @@ async function toggleCamera(){
   const ok=await startCamera();if(ok)toast('Camera is ready.');return ok;
 }
 function stopCamera(){
-  clearInterval(state.timerId); clearInterval(state.landmarkTimer);clearTimeout(state.autoStopTimer);state.autoStopTimer=null;
+  clearInterval(state.timerId); clearInterval(state.landmarkTimer);clearTimeout(state.autoStopTimer);clearTimeout(state.autoEvaluateTimer);state.autoStopTimer=null;state.autoEvaluateTimer=null;
   stopGhostOverlay();
   window.HandSignLandmarkProvider?.stop?.();
   if(state.recorder?.state==='recording') { state.recorder.onstop=null; state.recorder.stop(); }
@@ -1530,29 +1698,56 @@ function setFeedback(box,heading,message=''){
 function setTranslationResult(box,label,text){
   box.replaceChildren();const meta=document.createElement('span'),value=document.createElement('strong');meta.textContent=label;value.textContent=text;box.append(meta,value);box.dataset.text=text;
 }
+function friendlyError(error,context='general'){
+  const code=error?.payload?.code;
+  if(error?.name==='AbortError')return {title:'This is taking longer than expected',message:'Please check your connection and try again.'};
+  if(!navigator.onLine)return {title:'You appear to be offline',message:'Reconnect to the internet and try again — your progress is safe.'};
+  if(code==='unclear_sign')return {title:'We could not read that sign',message:'Keep both hands fully visible, improve the lighting, and record once more.'};
+  if(code==='ai_unavailable'||Number(error?.status)>=500)return {title:'Oops — we’re really sorry',message:'This feature is temporarily unavailable. Please wait a moment and try again.'};
+  if(context==='translation')return {title:'Translation did not finish',message:'Your recording was not saved. Please check the camera and try again.'};
+  if(context==='camera')return {title:'Camera could not start',message:'Allow camera access in your browser settings, then try again.'};
+  return {title:'Oops — something went wrong',message:'Please try again. If it keeps happening, reload the page.'};
+}
 
 async function evaluateSign(){
   const box=document.querySelector('#feedback'), btn=document.querySelector('#checkSign');
   if(!state.cameraStream){const ready=await startCamera();if(ready)toast('Camera is ready. Show the sign, then check it again.');return;}
+  clearTimeout(state.autoEvaluateTimer);state.autoEvaluateTimer=null;
   btn.disabled=true;btn.textContent=I18n.t('Analyzing…');setFeedback(box,I18n.t('Looking at your movement…'));
   const landmarks=window.HandSignLandmarkProvider?.getSequence?.() || [];
   try{
     const result=await Api.evaluateSign({lesson:state.lesson,landmarks,language:I18n.current});
     setFeedback(box,`${result.score}% ${I18n.t('match')}${result.demo?` · ${I18n.t('Demo')}`:''}`,I18n.t(result.feedback));
-    
-    if (result.xp_gained > 0 || result.coins_gained > 0) {
-      toast(`+${result.xp_gained} XP | +${result.coins_gained} Coins 🪙`);
+    const lesson=lessons.find(item=>item.name===state.lesson);
+    if(lesson){
+      const previous=lesson.score==='New'?0:Number(lesson.score||0);
+      lesson.score=Math.max(previous,Number(result.score||0));
+      lesson.completed=Boolean(lesson.completed||result.success);
+    }
+    const nextButton=document.querySelector('#nextSign');
+    if(nextButton)nextButton.hidden=Number(result.score||0)<=15;
+    let rewards={xpGained:Number(result.xp_gained||0),coinsGained:Number(result.coins_gained||0),dailyBonus:0,improved:Boolean(result.improved),previousBest:Number(result.previous_best||0),personalBest:Number(result.personal_best||result.score||0)};
+    if(!result.authenticated&&lesson)rewards=saveGuestAttempt(lesson,result.score,result.success);
+
+    if (result.authenticated) {
+      state.sessionAuthenticated=true;
       if (result.current_xp !== undefined) state.user.xp = result.current_xp;
       if (result.current_coins !== undefined) state.user.coins = result.current_coins;
       localStorage.setItem('handsign_user', JSON.stringify(state.user));
-      
+    }
+    if (rewards.xpGained > 0 || rewards.coinsGained > 0) {
+      toast(`New personal best! +${rewards.xpGained} XP · +${rewards.coinsGained} coins`);
       const coinSpan = document.getElementById('headerCoinCount');
       if (coinSpan) coinSpan.textContent = String(state.user.coins);
     } else {
-      toast(result.demo?'Demo feedback shown — API endpoint is ready to connect.':'Sign analyzed successfully.');
+      toast(`Attempt saved · beat ${Math.round(rewards.personalBest||result.score)}% to earn rewards`);
     }
   }
-  catch(error){setFeedback(box,I18n.t('Could not analyze'),error.message);}
+  catch(error){
+    const friendly=friendlyError(error,'evaluation');
+    setFeedback(box,friendly.title,friendly.message);
+    toast(`${friendly.title}. ${friendly.message}`);
+  }
   finally{
     window.HandSignLandmarkProvider?.reset?.();
     btn.disabled=true;
@@ -1569,6 +1764,23 @@ async function evaluateSign(){
       banner.textContent=I18n.t('Show the complete sign — it will be captured automatically');
     }
   }
+}
+
+function goToNextSign(){
+  const currentIndex=lessons.findIndex(lesson=>lesson.name===state.lesson);
+  const current=lessons[currentIndex];
+  if(!current||!lessonCanAdvance(current)){
+    toast('Score more than 15% to unlock the next sign.');
+    return;
+  }
+  const next=lessons[currentIndex+1];
+  if(!next){
+    toast('You reached the end of the learning path — great work!');
+    go('library');
+    return;
+  }
+  rememberLesson(next.name);
+  render();
 }
 
 async function startRecording(){
@@ -1590,8 +1802,15 @@ function stopRecording(){if(state.recorder?.state!=='recording')return;clearInte
 async function submitTranslation(){
   const durationMs=Date.now()-state.recordingStartedAt; const clip=new Blob(state.recordedChunks,{type:state.recorder?.mimeType||'video/webm'}); const resultBox=document.querySelector('#translationResult');
   if(!resultBox) return;
-  try{const result=await Api.translateClip({clip,landmarks:state.landmarkFrames,durationMs,language:I18n.current});const translatedText=result.demo?I18n.t(result.text):result.text;resultBox.classList.remove('empty');setTranslationResult(resultBox,`${I18n.t(result.demo?'Demo translation':'Translation')} · ${Math.round((result.confidence||0)*100)}% ${I18n.t('confidence')}`,translatedText);document.querySelector('#copyTranslation').disabled=false;document.querySelector('#speakTranslation').disabled=false;toast(result.demo?'Demo result shown — connect POST /translate/ for real recognition.':'Translation complete.');}
-  catch(error){resultBox.classList.remove('empty');setTranslationResult(resultBox,I18n.t('Translation failed'),error.message);}
+  try{const result=await Api.translateClip({clip,landmarks:state.landmarkFrames,durationMs,language:I18n.current});const translatedText=result.demo?I18n.t(result.text):result.text;resultBox.classList.remove('empty','error');setTranslationResult(resultBox,`${I18n.t(result.demo?'Demo translation':'Translation')} · ${Math.round((result.confidence||0)*100)}% ${I18n.t('confidence')}`,translatedText);document.querySelector('#copyTranslation').disabled=false;document.querySelector('#speakTranslation').disabled=false;toast(result.demo?'Demo result shown — connect POST /translate/ for real recognition.':'Translation complete.');}
+  catch(error){
+    const friendly=friendlyError(error,'translation');
+    resultBox.classList.remove('empty');resultBox.classList.add('error');
+    setTranslationResult(resultBox,friendly.title,friendly.message);
+    const copy=document.querySelector('#copyTranslation'),speak=document.querySelector('#speakTranslation');
+    if(copy)copy.disabled=true;if(speak)speak.disabled=true;
+    toast('Translation unavailable — please try again.');
+  }
   finally{const button=document.querySelector('#recordToggle'),cameraButton=document.querySelector('#cameraToggle');if(button){button.disabled=false;button.textContent=I18n.t('Sign another phrase');button.classList.remove('recording');}if(cameraButton)cameraButton.disabled=false;const pill=document.querySelector('#recordingPill');if(pill)pill.innerHTML=`<i class="live-dot"></i> ${I18n.t('Ready to translate')}`;state.recorder=null;}
 }
 
@@ -1622,6 +1841,7 @@ async function saveUserSettings(e){
   try{
     const updated=await Api.updateProfile({name,email,avatar,new_password,country,pronouns,skin_tone,daily_goal_minutes,onboarding_completed:true});
     state.user={...state.user,...updated};
+    lessons=lessons.map(lesson=>({...lesson,emoji:applySkinTone(EMOJI_MAP[lesson.name]||(lesson.name.startsWith('Letter')?'🔤':'🤟'))}));
     localStorage.setItem('handsign_user',JSON.stringify(state.user));
     if(status){status.textContent=I18n.t('Profile updated.');status.classList.add('connected');}
     toast(I18n.t('Profile updated.'));
@@ -1651,23 +1871,23 @@ async function checkout(){const btn=document.querySelector('[data-checkout]');bt
 function logout(){localStorage.removeItem('handsign_access_token');localStorage.removeItem('handsign_user');state.user={name:'Alex Morgan',email:'alex@example.com'};toast('Signed out.');go('home');}
 function bindLessonCards(){
   document.querySelectorAll('[data-lesson]').forEach(el=>{
-    el.onclick=()=>{state.lesson=el.dataset.lesson;go('practice');};
+    el.onclick=()=>{rememberLesson(el.dataset.lesson);go('practice');};
   });
   document.querySelectorAll('[data-lesson-group]').forEach(el => {
     el.onclick = () => {
       const lgId = parseInt(el.dataset.lessonGroup, 10);
       const lg = lessonGroups.find(x => x.id === lgId);
       if (!lg) return;
-      const incompleteWord = lg.words.find(w => w.score === 'New' || parseInt(w.score, 10) < 70) || lg.words[0];
+      const incompleteWord = lg.words.find(w => !lessonCanAdvance(w)) || lg.words[0];
       if (incompleteWord) {
-        state.lesson = incompleteWord.name;
+        rememberLesson(incompleteWord.name);
         go('practice');
       }
     };
   });
   document.querySelectorAll('[data-lesson-word]').forEach(el => {
     el.onclick = () => {
-      state.lesson = el.dataset.lessonWord;
+      rememberLesson(el.dataset.lessonWord);
       go('practice');
     };
   });
@@ -1677,12 +1897,14 @@ function toggleTheme(){
   const next=isDark()?'light':'dark'; document.documentElement.dataset.theme=next; localStorage.setItem('handsign_theme',next);
   document.querySelector('meta[name="theme-color"]').content=next==='dark'?'#0b1714':'#f5f7f2';
   updatePreferenceUrl('theme',next);
-  document.querySelectorAll('[data-theme-toggle]').forEach(button=>{button.textContent=next==='dark'?'☀':'☾';button.title=I18n.t(next==='dark'?'Light':'Dark');});
+  document.querySelectorAll('[data-theme-toggle]').forEach(button=>{button.innerHTML=themeIcon(next==='dark');button.title=I18n.t(next==='dark'?'Light':'Dark');});
 }
 function changeLanguage(language){
   I18n.set(language);updatePreferenceUrl('lang',language);I18n.apply(document.querySelector('#app'));const openModal=document.querySelector('#modal');if(openModal)I18n.apply(openModal);
   document.querySelectorAll('[data-language-toggle] strong').forEach(el=>el.textContent=language.toUpperCase());
   document.querySelectorAll('[data-language-option]').forEach(el=>{const active=el.dataset.languageOption===language;el.classList.toggle('active',active);el.setAttribute('aria-checked',String(active));el.querySelector('.language-check').textContent=active?'✓':'';});
+  refreshGuideButton();
+  document.querySelectorAll('[data-guide-language]').forEach(badge=>badge.innerHTML=`${applySkinTone('🤟')} ${language==='ru'?'RU':'EN'}`);
   closeLanguageMenus();
 }
 function closeLanguageMenus(except=null){
@@ -1693,6 +1915,44 @@ function closeLanguageMenus(except=null){
     const trigger=switcher.querySelector('[data-language-toggle]');trigger?.setAttribute('aria-expanded','false');if(returnFocus)trigger?.focus();
   });
 }
+function closeCustomSelects(except=null){
+  document.querySelectorAll('[data-custom-select].open').forEach(control=>{
+    if(control===except)return;
+    control.classList.remove('open');
+    control.querySelector('.custom-select-trigger')?.setAttribute('aria-expanded','false');
+  });
+}
+function bindCustomSelects(){
+  document.querySelectorAll('[data-custom-select]').forEach(control=>{
+    const source=control.querySelector('select'),trigger=control.querySelector('.custom-select-trigger');
+    const options=[...control.querySelectorAll('[data-custom-select-value]')];
+    const choose=option=>{
+      source.value=option.dataset.customSelectValue;
+      control.querySelector('[data-custom-select-label]').textContent=option.textContent;
+      options.forEach(item=>item.setAttribute('aria-selected',String(item===option)));
+      source.dispatchEvent(new Event('change',{bubbles:true}));
+      closeCustomSelects();trigger.focus();
+    };
+    trigger.addEventListener('click',event=>{
+      event.stopPropagation();
+      const opening=!control.classList.contains('open');
+      closeCustomSelects(control);control.classList.toggle('open',opening);
+      trigger.setAttribute('aria-expanded',String(opening));
+      if(opening)options.find(option=>option.getAttribute('aria-selected')==='true')?.focus();
+    });
+    trigger.addEventListener('keydown',event=>{if(['ArrowDown','ArrowUp','Enter',' '].includes(event.key)){event.preventDefault();trigger.click();}});
+    options.forEach((option,index)=>{
+      option.addEventListener('click',event=>{event.stopPropagation();choose(option);});
+      option.addEventListener('keydown',event=>{
+        if(event.key==='ArrowDown'){event.preventDefault();options[(index+1)%options.length].focus();}
+        if(event.key==='ArrowUp'){event.preventDefault();options[(index-1+options.length)%options.length].focus();}
+        if(event.key==='Home'){event.preventDefault();options[0].focus();}
+        if(event.key==='End'){event.preventDefault();options.at(-1).focus();}
+        if(event.key==='Escape'){event.preventDefault();closeCustomSelects();trigger.focus();}
+      });
+    });
+  });
+}
 function closeMobileMenu(){document.querySelector('#mobileDropdown')?.classList.remove('open');document.querySelector('[data-mobile-menu]')?.setAttribute('aria-expanded','false');}
 
 async function copyText(text){
@@ -1701,7 +1961,12 @@ async function copyText(text){
 }
 function speakText(text){
   if(!('speechSynthesis' in window)){toast('Speech is not supported in this browser.');return;}
-  speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang={en:'en-US',ru:'ru-RU',cs:'cs-CZ'}[I18n.current];speechSynthesis.speak(utterance);
+  const button=document.querySelector('#speakTranslation'),label=button?.querySelector('span');
+  speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(text);utterance.lang={en:'en-US',ru:'ru-RU',cs:'cs-CZ'}[I18n.current]||'en-US';
+  utterance.onstart=()=>{if(button)button.classList.add('active');if(label)label.textContent=I18n.t('Speaking…');};
+  const reset=()=>{if(button)button.classList.remove('active');if(label)label.textContent=I18n.t('Read aloud');};
+  utterance.onend=reset;utterance.onerror=()=>{reset();toast('Could not read the translation aloud.');};
+  speechSynthesis.speak(utterance);
 }
 function toggleLanguageMenu(button){
   const switcher=button.closest('.language-switcher'); const willOpen=!switcher.classList.contains('open');
@@ -1758,6 +2023,7 @@ function bind(){
   document.querySelector('[data-action="edit-profile"]')?.addEventListener('click',()=>showModal('profile'));
   document.querySelectorAll('[data-logout]').forEach(el=>el.addEventListener('click',()=>{ closeProfileMenu(); logout(); }));
   document.querySelector('#userSettingsForm')?.addEventListener('submit',saveUserSettings);
+  bindCustomSelects();
   document.querySelectorAll('[data-profile-toggle]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();toggleProfileMenu();}));
 
   document.querySelector('[data-checkout]')?.addEventListener('click',checkout);
@@ -1769,6 +2035,7 @@ function bind(){
   document.querySelector('#openVideoBtn')?.addEventListener('click',()=>showModal('video'));
   document.querySelector('#cameraToggle')?.addEventListener('click',toggleCamera);
   document.querySelector('#checkSign')?.addEventListener('click',evaluateSign);
+  document.querySelector('#nextSign')?.addEventListener('click',goToNextSign);
   document.querySelector('#helpToggle')?.addEventListener('change',event=>{
     state.helpEnabled=event.currentTarget.checked;
     document.querySelector('#overlayCanvas')?.classList.toggle('visible',state.helpEnabled);
@@ -1778,7 +2045,7 @@ function bind(){
     }else stopGhostOverlay();
   });
   document.querySelector('#recordToggle')?.addEventListener('click',()=>state.recorder?.state==='recording'?stopRecording():startRecording());
-  document.querySelector('#copyTranslation')?.addEventListener('click',async()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text){try{await copyText(text);toast('Translation copied.');}catch(error){toast(error.message);}}});
+  document.querySelector('#copyTranslation')?.addEventListener('click',async e=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text){const button=e.currentTarget,label=button.querySelector('span'),original=label.textContent;try{await copyText(text);button.classList.add('active');label.textContent=I18n.t('Copied');toast('Translation copied.');setTimeout(()=>{button.classList.remove('active');label.textContent=original;},1400);}catch(error){toast(error.message);}}});
   document.querySelector('#speakTranslation')?.addEventListener('click',()=>{const text=document.querySelector('#translationResult')?.dataset.text;if(text)speakText(text);});
 
   // Social Event Handlers
@@ -1843,12 +2110,13 @@ window.addEventListener('handsign-tracking',event=>{
   const status=document.querySelector('#trackingStatus');
   if(!status||!state.cameraStream)return;
   const count=Number(event.detail?.handCount||0),required=Number(event.detail?.requiredHands||1);
+  const targetFrames=Number(event.detail?.targetFrames||6);
   const enough=count>=required;
   status.classList.toggle('tracking-ready',enough);
   const label=enough
     ? (required===2?'Both hands detected':'Hand detected')
     : (required===2?`Show both hands (${count}/2)`:'Show your hand');
-  status.innerHTML=`<i class="${enough?'live-dot':'record-dot'}"></i> ${I18n.t(label)} [${event.detail?.sequenceLength||0}/12]`;
+  status.innerHTML=`<i class="${enough?'live-dot':'record-dot'}"></i> ${I18n.t(label)} [${Math.min(event.detail?.sequenceLength||0,targetFrames)}/${targetFrames}]`;
 });
 
 
@@ -1857,7 +2125,7 @@ window.addEventListener('tracker-error', event => {
   const status = document.querySelector('#trackingStatus');
   if(status) {
     status.classList.add('offline');
-    status.innerHTML = `<i class="record-dot"></i> Error: ${event.detail}`;
+    status.innerHTML = '<i class="record-dot"></i> Tracking paused — trying to reconnect';
   }
 });
 
@@ -1871,13 +2139,25 @@ window.addEventListener('handsign-captured',()=>{
   }
   if(banner){
     banner.classList.add('ready');
-    banner.textContent=I18n.t('✓ Sign captured — you can lower your hands');
+    banner.textContent=state.requiredHands===2
+      ? '✓ Both hands captured — keep the final pose, checking in a moment…'
+      : I18n.t('✓ Sign captured — you can lower your hands');
+  }
+  if(state.requiredHands===2&&!state.autoEvaluateTimer){
+    state.autoEvaluateTimer=setTimeout(()=>{
+      state.autoEvaluateTimer=null;
+      const check=document.querySelector('#checkSign');
+      if(state.route==='practice'&&state.cameraStream&&check&&!check.disabled)evaluateSign();
+    },2600);
   }
 });
 document.addEventListener('click',event=>{
+  const focused=document.activeElement;
+  if(focused?.matches?.('.select-control select')&&!event.target.closest('.select-control'))focused.blur();
   if(!event.target.closest('.language-switcher'))closeLanguageMenus();
+  if(!event.target.closest('[data-custom-select]'))closeCustomSelects();
   if(!event.target.closest('.nav'))closeMobileMenu();
   if(!event.target.closest('.profile-dropdown-wrapper'))closeProfileMenu();
 });
-document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeLanguageMenus();closeMobileMenu();closeProfileMenu();closeModal();}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeCustomSelects();closeLanguageMenus();closeMobileMenu();closeProfileMenu();closeModal();}});
 render();

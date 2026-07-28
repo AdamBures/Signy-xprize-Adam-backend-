@@ -1,137 +1,215 @@
-# Sign Language AI Tutor - Backend API & Frontend SPA
+# HandSign
 
-A robust Python/Django backend and an interactive Vanilla JS SPA frontend designed for teaching American Sign Language (ASL) and translating signs in real time. The application is specifically optimized to help parents of children with delayed speech development or autism.
+HandSign is a Django REST API and dependency-free JavaScript SPA for learning
+American Sign Language (ASL). It provides guided lessons, browser-side hand
+tracking, landmark-based evaluation, saved progress, streaks, rewards, a
+Gemini-backed free-sign translator, profiles, friends, a leaderboard, and
+optional Stripe premium access.
 
-Create an administrator explicitly (the seed command never creates a default
-password):
+This document describes the current implementation. For deeper technical
+details, see [ARCHITECTURE.md](ARCHITECTURE.md), [TESTING.md](TESTING.md), and
+[HANDOFF.md](HANDOFF.md).
 
-## Core Features
+## Current behavior
 
-### 🧠 1. MediaPipe Evaluation & Gemini AI Feedback
-- **Landmark Normalization**: Our evaluation algorithm normalizes 21 3D hand coordinates (wrist-centered scaling to palm size) and runs temporal resampling via linear interpolation. This ensures the engine doesn't care how far you are from the camera or how fast you move.
-- **Gemini AI Diagnostics**: If you mess up a sign, the system analyzes the exact deviations of your individual fingers and pings the Google Gemini API to give you empathetic, highly specific advice on how to fix it.
+- The frontend and API are served by the same Django application.
+- MediaPipe runs in the browser. Camera frames are not continuously uploaded.
+- A guided attempt sends captured hand landmarks to the evaluation endpoint.
+- One- and two-hand signs are supported. Two-hand capture waits for a stable
+  sequence and preserves the captured frames after the user lowers their hands.
+- A score above 15% unlocks navigation to the next word.
+- A score of 60% or more marks a word completed.
+- Progress stores the personal best per user and word.
+- Rewards are granted only when the personal best improves: 60 XP and 10 coins.
+- Every authenticated attempt creates an activity entry for streak tracking,
+  including attempts that do not improve the personal best.
+- Gemini feedback is optional. Deterministic evaluation and progress saving
+  continue working if Gemini is unavailable.
+- Free translation tries configured Gemini models in order and returns a
+  friendly error if all models fail.
+- Russian UI uses Russian sign-guide videos. English and Czech UI use English
+  sign-guide videos. A clear placeholder is shown when no video is available.
+- UI languages: English, Russian, and Czech.
 
-### 📺 2. Video Lessons (WLASL) & Ghost Overlay
-- **Local Serving**: We stream the original mp4 WLASL videos directly from the `raw_videos/` folder straight to the browser.
-- **Auto-Open Tutorial**: Whenever you jump into a lesson, a looping video tutorial automatically pops up to show you the ropes.
-- **Watch Example**: While you're practicing on camera, you can always pull the video back up by hitting the *"Watch Video Example"* button.
-- **Digital Ghost Overlay**: A semi-transparent, animated skeletal hand (a "ghost") demonstrating the correct execution is projected directly over your webcam feed. It's essentially real-time motor correction drawn right on your screen.
+## Technology
 
-### 👥 3. Social System (Friends, Streaks & Suggestions)
-- **Gamified Streaks**: Daily streaks are automatically tracked based on the exercises you complete.
-- **Streaks Scoreboard**: Your friend list doubles as a leaderboard that auto-sorts everyone by their daily streaks to keep motivation high.
-- **Suggestions**: The system suggests other users you might want to connect with, which you can add with a single click.
-- **Requests & Approvals**: Full real-time support for sending, accepting, and declining friend requests.
+- Python 3.11+
+- Django 5 and Django REST Framework
+- SQLite by default
+- Vanilla JavaScript, HTML, and CSS
+- MediaPipe Hands in the browser
+- Google Gen AI SDK
+- Stripe SDK
+- Gunicorn and WhiteNoise for container deployment
 
-### 💳 4. Stripe Paywall & Subscriptions
-- **Stripe Checkout**: Fully integrated payment gateways for purchasing premium access.
-- **Stripe Webhooks**: Secure, automated unlocking of premium lessons the exact moment your payment clears.
+## Quick start
 
-### ⚡ 5. Scalable Architecture (Infinite Scroll & Pagination)
-- **IntersectionObserver Infinite Scroll**: The client SPA leverages modern IntersectionObservers to deliver a flawless infinite scrolling experience across the entire app (Lesson Library, Leaderboards, Friend Lists).
-- **Backend Pagination**: The Django REST Framework (DRF) serves data in pages. The social panel uses an advanced asynchronous pagination strategy that independently paginates accepted friends (`friends_page`) and pending requests (`requests_page`) inside a single API call, entirely eliminating massive JSON payloads.
+Linux/macOS:
 
 ```bash
-git status --short
-git diff --check
-python manage.py test
+git clone https://github.com/n1xone/Signy-xprize-Adam-backend-.git
+cd Signy-xprize-Adam-backend-
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py seed_lessons
+python manage.py runserver 8080
 ```
 
-## 💼 Business Model & Monetization
+Windows PowerShell:
 
-HandSign is built as a highly viable product targeting a specific, high-intent market:
-- **Target Audience**: Parents of children with communication barriers (autism, delayed speech development, hearing impairments). These parents are incredibly motivated to learn sign language fast so they can actually communicate with their kids at home.
-- **Monetization Model**: A flat fee or subscription of **$10 USD** for "Family Unlimited Access". Payments are fully automated through a secure Stripe interface.
-- **Proof of Revenue**: The payment flows are wired directly into a Stripe dashboard and can be simulated in test mode to prove real conversion mechanics for the jury's evaluation.
+```powershell
+git clone https://github.com/n1xone/Signy-xprize-Adam-backend-.git
+cd Signy-xprize-Adam-backend-
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python manage.py migrate
+python manage.py seed_lessons
+python manage.py runserver 8080
+```
 
----
+Open <http://127.0.0.1:8080/>.
 
-## 🚀 Future Vision
+The application works without Gemini or Stripe credentials. Translation,
+optional AI coaching, and real checkout require their respective keys.
 
-For the sake of the competition and the platform's future growth, here's what we're building next:
-1. **Face and Body Tracking (NMMs - Non-Manual Markers)**: Sign language isn't just about hands; facial expressions and shoulder movements are massive. Future versions will expand the MediaPipe model to detect facial landmarks and body tilt, allowing Gemini AI to evaluate the overall naturalness of your delivery.
-2. **Adaptive Learning**: If the system notices you're repeatedly making the same mistake (e.g., leaving your thumb open on the letter D), the algorithm will automatically inject isolation exercises targeting that exact motor correction into your learning plan.
-3. **Situational Scenarios**: We're moving from isolated vocabulary to thematic conversational blocks ("Playing at the park", "Lunchtime"), letting parents apply signs in real-life situations immediately.
-4. **Deaf Culture Context**: We plan to weave Deaf culture tips (like how to properly maintain eye contact) straight into Gemini AI's feedback so users learn the language in its proper social context.
+Detailed local instructions are in [LOCAL_SETUP.md](LOCAL_SETUP.md). Docker
+instructions are in [DOCKER_SETUP.md](DOCKER_SETUP.md).
 
----
+## Environment variables
 
-## API Endpoints Overview (`/api/v1/`)
+Copy `.env.example` to `.env`. Never commit real credentials.
 
-All API requests and responses talk in JSON and require an authorization header for secured sections:  
-`Authorization: Bearer <auth_token>`
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Django signing secret; replace in production |
+| `DEBUG` | Django debug mode |
+| `ALLOWED_HOSTS` | Comma-separated allowed hosts |
+| `CORS_ALLOWED_ORIGINS` | Documented allowed origins; current settings allow all origins during development |
+| `DATABASE_PATH` | Optional SQLite database path |
+| `GEMINI_API_KEY` | Enables Gemini translation and optional coaching |
+| `GEMINI_FEEDBACK_ENABLED` | Set `true` to enable Gemini-generated attempt advice |
+| `GEMINI_MODEL` | First Gemini model to try |
+| `GEMINI_MODELS` | Comma-separated fallback model list |
+| `STRIPE_SECRET_KEY` | Stripe server key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature secret |
+| `FRONTEND_URL` | Redirect base used by checkout |
 
-### 🔑 Authentication
-- `POST /api/v1/auth/register/` – Register a new user.
-- `POST /api/v1/auth/login/` – Log a user in.
+Model availability changes over time. Keep `GEMINI_MODEL` and
+`GEMINI_MODELS` aligned with models enabled for the project’s Gemini account.
 
-### 📚 Lessons & Progress
-- `GET /api/v1/lessons/` – Fetch available lessons (including links to example videos).
-- `GET /api/v1/me/progress/` – Fetch user stats (daily streak, accuracy, active days this week).
-- `GET /api/v1/me/` – Fetch and update profile details (including custom avatar uploads).
+## Important commands
 
-### 🤖 Evaluation & Translation
-- `POST /api/v1/practice/evaluate/` – Submit MediaPipe landmarks to evaluate a specific word.
-- `POST /api/v1/translate/` – Submit a video clip and landmarks for real-time translation.
+```bash
+# Database
+python manage.py migrate
+python manage.py makemigrations --check --dry-run
 
-### 👥 Social Features (Friends & Leaderboard)
-- `GET /api/v1/friends/` – Returns friends, incoming requests, and suggested users. Supports `friends_page` and `requests_page` params for smooth infinite scrolling.
-- `POST /api/v1/friends/request/` – Send a friend request (accepts `username` or `to_user_id`).
-- `POST /api/v1/friends/respond/` – Approve (`accept`) or decline (`reject`) a request (accepts `friendship_id`).
-- `GET /api/v1/users/leaderboard/` – Fetch the global or local player leaderboard sorted by XP, with standard `page` pagination support.
+# Seed the built-in lesson catalog (safe to run repeatedly)
+python manage.py seed_lessons
 
-### 💳 Billing
-- `POST /api/v1/billing/checkout/` – Create a Stripe Checkout session.
-- `POST /api/v1/billing/stripe-webhook/` – Stripe webhook endpoint for processing async payment events (e.g., `checkout.session.completed`).
+# Administrator account (never created by seed_lessons)
+python manage.py createsuperuser
 
----
+# Tests and static validation
+python manage.py test
+python manage.py check
+node --check app.js
+node --check api.js
+node --check i18n.js
+node --check tracker.js
+git diff --check
 
-## Running Locally (Docker Setup)
+# Production static assets
+python manage.py collectstatic --noinput
+```
 
-The absolute easiest way to get the whole stack running locally:
+## API overview
 
-1. **Create the `.env` config file:**
-   Create a `.env` file in the root directory based on `.env.example` and drop in your `GEMINI_API_KEY`, `STRIPE_SECRET_KEY`, and `STRIPE_WEBHOOK_SECRET`.
+The primary client API is under `/api/v1/`. Protected endpoints accept:
 
-2. **Build the Docker image:**
-   ```bash
-   docker build -t signy-backend .
-   ```
+```text
+Authorization: Bearer <token>
+```
 
-3. **Spin up the container:**
-   ```bash
-   docker run -d --name signy-app -p 8080:8080 signy-backend
-   ```
-   The app will be live at `http://localhost:8080/`.
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/v1/health/` | Health check |
+| `POST /api/v1/auth/register/` | Register and receive a token |
+| `POST /api/v1/auth/login/` | Log in and receive a token |
+| `GET /api/v1/lessons/` | Paginated word/lesson catalog |
+| `GET /api/v1/lessons/<id>/` | Word detail and reference data |
+| `GET /api/v1/me/` | Current profile |
+| `PATCH /api/v1/me/` | Update profile and preferences |
+| `GET /api/v1/me/progress/` | Saved best scores and summary |
+| `POST /api/v1/practice/evaluate/` | Evaluate captured landmarks |
+| `GET /api/v1/practice/quiz/` | Placement/practice quiz |
+| `POST /api/v1/translate/` | Translate an uploaded sign clip |
+| `GET /api/v1/friends/` | Friends, requests, and suggestions |
+| `POST /api/v1/friends/request/` | Send a friend request |
+| `POST /api/v1/friends/respond/` | Accept or reject a request |
+| `GET /api/v1/leaderboard/` | XP leaderboard |
+| `GET /api/v1/countries/` | Active leaderboard countries |
+| `POST /api/v1/store/buy-premium/` | Buy temporary premium with coins |
+| `POST /api/v1/billing/checkout/` | Create Stripe Checkout |
+| `POST /api/v1/billing/stripe-webhook/` | Process Stripe events |
 
-4. **Upload example videos into the container:**
-   ```bash
-   docker cp raw_videos signy-app:/app/raw_videos
-   ```
+Legacy modular routes under `/api/users/`, `/api/lessons/`, and
+`/api/evaluation/` remain available, but new frontend work should use
+`/api/v1/`.
 
-5. **Import the WLASL gesture database (limited to 150 videos):**
-   ```bash
-   docker exec signy-app python manage.py import_raw_videos --limit 150
-   ```
+## Sign-guide videos
 
----
+Each `Word` supports:
 
-## Running without Docker (Developer Mode)
+- `video_url_ru`: Russian sign-language guide, selected for Russian UI.
+- `video_url_en`: English sign-language guide, selected for English/Czech UI.
+- `video_url`: legacy/default English fallback.
 
-1. **Activate your virtual environment:**
-   ```bash
-   .\venv\Scripts\activate
-   ```
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run migrations and seed the database:**
-   ```bash
-   python manage.py migrate
-   python manage.py seed_lessons
-   ```
-4. **Boot up the dev server:**
-   ```bash
-   python manage.py runserver 8080
-   ```
+URLs may be remote or local paths such as `/raw_videos/example.mp4`. Missing
+videos do not break a lesson; the UI keeps written shape, position, and movement
+instructions available.
+
+The repository intentionally does not require a large video dataset. Coordinate
+video assets with the project owner and do not commit licensed datasets without
+permission.
+
+## Repository map
+
+```text
+config/       Django settings and root URLs
+evaluation/   Landmark scoring, Gemini fallback, evaluate/translate views
+lessons/      Categories, words, progress, seed/import commands
+users/        User model, auth, social, streak, rewards, billing
+app.js        SPA routes, UI state, practice/translation flows
+tracker.js    Browser MediaPipe integration and frame capture
+api.js        Frontend API adapter and friendly transport handling
+i18n.js       English/Russian/Czech UI and lesson text
+styles.css    Responsive UI and themes
+index.html    SPA entry point
+```
+
+## Security and production notes
+
+- Set `DEBUG=False`, a strong `SECRET_KEY`, and restricted `ALLOWED_HOSTS`.
+- Review CORS settings before public deployment; development currently permits
+  all origins.
+- Serve only over HTTPS so browsers permit camera access.
+- Use a persistent database/volume. SQLite is suitable for local development,
+  not a horizontally scaled deployment.
+- Configure SMTP if reminder emails are required outside development.
+- Configure Stripe webhook verification before enabling paid access.
+- Review privacy, retention, and consent requirements before storing clips or
+  biometric landmark data. The current guided evaluator stores scores, not raw
+  attempt sequences.
+
+## Status
+
+The current baseline passes 21 Django tests and browser checks for profile
+dropdown behavior, localized guide selection, one-hand capture, two-hand grace
+capture, and progress flows. See [TESTING.md](TESTING.md) for the release
+checklist and known hardware-dependent checks.

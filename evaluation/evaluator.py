@@ -9,6 +9,7 @@ MESSAGES = {
         'eyes_closed': 'Při dokončení znaku jemně zavřete oči.',
         'no_hands': 'Nebyly zachyceny požadované body rukou.',
         'shape': 'Celkový tvar rukou nebo pohyb neodpovídá vzoru.',
+        'two_hand_shape': 'Obě ruce byly zachyceny. Držte je dále od sebe a zopakujte celý pohyb pomaleji.',
         'almost': 'Tvar je již blízko. Zopakujte pohyb pomaleji a chvíli podržte konečnou polohu.',
     },
     'ru': {
@@ -18,6 +19,7 @@ MESSAGES = {
         'eyes_closed': 'В конце жеста мягко закройте глаза.',
         'no_hands': 'Не удалось записать нужное количество рук.',
         'shape': 'Общая форма рук или движение пока не совпадают с образцом.',
+        'two_hand_shape': 'Обе руки распознаны. Держите их чуть дальше друг от друга и повторите движение медленнее.',
         'almost': 'Форма уже близка. Повторите движение немного медленнее и задержитесь в конечном положении.',
     },
     'en': {
@@ -27,6 +29,7 @@ MESSAGES = {
         'eyes_closed': 'Gently close your eyes as you finish the sign.',
         'no_hands': 'The required number of hands was not captured.',
         'shape': 'The overall hand shape or movement does not match the reference yet.',
+        'two_hand_shape': 'Both hands were captured. Keep them slightly farther apart and repeat the full movement more slowly.',
         'almost': 'Your shape is close. Repeat the movement a little slower and hold the final position.',
     },
 }
@@ -97,6 +100,15 @@ def normalize_frame(coords):
     """
     if len(coords) == 0:
         return coords
+
+    # Normalize two-hand signs per hand. Using the first wrist as the origin
+    # for all 42 points made the second hand extremely sensitive to camera
+    # framing and could turn a valid sign into a 0% match.
+    if len(coords) == 42:
+        return np.concatenate(
+            [normalize_frame(coords[:21]), normalize_frame(coords[21:42])],
+            axis=0,
+        )
     
     # 0 is WRIST
     wrist = coords[0]
@@ -218,21 +230,27 @@ def evaluate_landmarks(
     # Resample user to match reference frame count
     user_resampled = resample_sequence(user_norm, len(ref_norm))
 
-    # Accept either dominant hand by comparing the original and x-mirrored pose.
-    mirrored_user = user_resampled.copy()
-    mirrored_user[:, :, 0] *= -1
+    # Accept mirrored cameras and either left/right detection order. MediaPipe
+    # may reorder hands as they cross, while the authored reference is fixed.
+    candidates = [user_resampled]
     if expected_points == 42:
-        mirrored_user = np.concatenate(
-            [mirrored_user[:, 21:42, :], mirrored_user[:, 0:21, :]],
+        candidates.append(np.concatenate(
+            [user_resampled[:, 21:42, :], user_resampled[:, 0:21, :]],
             axis=1,
+        ))
+    candidates.extend([
+        np.concatenate(
+            [candidate[:, :, :1] * -1, candidate[:, :, 1:]],
+            axis=2,
         )
-    direct_distances = np.linalg.norm(user_resampled - ref_norm, axis=2)
-    mirrored_distances = np.linalg.norm(mirrored_user - ref_norm, axis=2)
-    if np.mean(mirrored_distances) < np.mean(direct_distances):
-        user_resampled = mirrored_user
-        distances = mirrored_distances
-    else:
-        distances = direct_distances
+        for candidate in list(candidates)
+    ])
+    scored_candidates = [
+        (float(np.mean(np.linalg.norm(candidate - ref_norm, axis=2))), candidate)
+        for candidate in candidates
+    ]
+    _, user_resampled = min(scored_candidates, key=lambda item: item[0])
+    distances = np.linalg.norm(user_resampled - ref_norm, axis=2)
     
     mean_distance = float(np.mean(distances))
 
@@ -250,6 +268,10 @@ def evaluate_landmarks(
         ref_norm[mid_frame_idx],
         language=language,
     )
+    if score < 25:
+        issues = [
+            message(language, 'two_hand_shape' if expected_points == 42 else 'shape')
+        ]
 
     face_result = evaluate_face_metrics(face_metrics, reference_face_metrics, language=language)
     if face_result['score'] is not None:

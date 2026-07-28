@@ -19,6 +19,18 @@ class Word(models.Model):
     slug = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, default='')
     video_url = models.URLField(blank=True, default='')
+    video_url_en = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text='English sign-language guide used for English and Czech UI',
+    )
+    video_url_ru = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text='Russian sign-language guide used for Russian UI',
+    )
     is_premium = models.BooleanField(default=False)
     requires_face = models.BooleanField(
         default=False,

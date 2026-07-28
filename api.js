@@ -63,7 +63,7 @@ async function request(path, { method = 'GET', body, formData, timeout = 8000, f
     return { ...payload, demo: Boolean(payload.demo) };
   } catch (error) {
     const staticHostMiss = error instanceof HttpError && demoFallbackEnabled() && !error.isJson && [404, 405, 501].includes(error.status);
-    if (fallback !== undefined && (!(error instanceof HttpError) || staticHostMiss)) {
+    if (fallback !== undefined && demoFallbackEnabled() && (!(error instanceof HttpError) || staticHostMiss)) {
       console.info(`[HandSign demo] ${method} ${path}:`, error.message);
       return { ...(typeof fallback === 'function' ? fallback() : fallback), demo: true };
     }
@@ -111,7 +111,7 @@ export const Api = {
   },
   async evaluateSign({ lesson, landmarks = [], faceMetrics = [], language = 'en' }) {
     return request('/practice/evaluate/', {
-      method: 'POST', body: { lesson, landmarks, face_metrics: faceMetrics, language },
+      method: 'POST', body: { lesson, landmarks, face_metrics: faceMetrics, language }, timeout: 12000,
       fallback: { score: 86, feedback: 'Your hand shape looks right. Try raising your hand slightly closer to your temple.' }
     });
   },
@@ -122,7 +122,7 @@ export const Api = {
     data.append('duration_ms', String(durationMs));
     data.append('language', language);
     return request('/translate/', {
-      method: 'POST', formData: data, timeout: 30000,
+      method: 'POST', formData: data, timeout: 60000,
       fallback: { text: 'Hello, I would like some water, please.', confidence: 0.82 }
     });
   },

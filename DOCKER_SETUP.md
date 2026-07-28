@@ -1,46 +1,122 @@
-# Jak u sebe spustit HandSign přes Docker (Verze 1.1)
+# Docker setup
 
-Pokud u sebe nemáš složku aw_videos\ a chceš celou aplikaci rozběhnout přes Docker (což je mnohem snazší na údržbu), použij tento postup:
+The image serves Django, the API, and the frontend SPA through Gunicorn on port
+8080. On startup it applies migrations and runs the idempotent lesson seed.
 
----
+## Build
 
-### 1. Stažení kódu
-Naklonuj si repozitář s projektem a přepni se do správné verze:
-\\ash
-git clone <URL-K-VAŠEMU-REPOZITÁŘI>
-cd Signy-xprize-Adam-backend-
-git checkout Version-1.1
-\
-### 2. Vytvoření konfiguračního souboru (.env)
-Aby ti uvnitř Dockeru fungovala komunikace s umělou inteligencí a platbami, vytvoř přímo ve složce projektu (vedle souboru \Dockerfile\) textový soubor \.env\. 
+```bash
+docker build -t handsign:local .
+```
 
-Vlož do něj tyto řádky a doplň klíče:
-\\env
-GEMINI_API_KEY=tvuj_gemini_klic
-STRIPE_SECRET_KEY=tvuj_stripe_secret_klic
-STRIPE_WEBHOOK_SECRET=tvuj_stripe_webhook_klic
-\
-### 3. Vytvoření Docker obrazu (Build)
-Ujisti se, že máš zapnutý Docker Desktop (nebo službu Docker). V terminálu ve složce s projektem spusť tento příkaz, kterým aplikaci sestavíš:
-\\ash
-docker build -t handsign-app .
-\*(Tohle chvilku potrvá, protože se stáhne Python a nainstalují se všechny závislosti.)*
+## Configure
 
-### 4. Spuštění kontejneru 🚀
-Nyní aplikaci spusť a propoď ji s portem 8080:
-\\ash
-docker run -d --name handsign-container -p 8080:8080 --env-file .env handsign-app
-\
-**A je hotovo!** Kontejner sám na pozadí připraví databázi (\migrate\) a automaticky ji naplní testovacími lekcemi (\seed_lessons\).
+```bash
+cp .env.example .env
+```
 
-Nyní si jen otevři prohlížeč a běž na adresu: **http://localhost:8080/**
+For a local container, review at least:
 
----
+```env
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+FRONTEND_URL=http://localhost:8080
+DATABASE_PATH=/app/data/db.sqlite3
+GEMINI_FEEDBACK_ENABLED=false
+```
 
-### Poznámky na okraj:
-* **Absence aw_videos\:** Nevadí, že nemáš složku aw_videos\. Aplikace poběží i bez ní, akorát ve výukovém okně neuvidíš originální ukázková videa u lekcí (může tam být šedý obdélník). Vlastní rozpoznávání na kameře ti ale fungovat bude normálně!
-* Jakmile bys videa získal, můžeš je do běžícího Dockeru nahrát takto:
-  \\ash
-  docker cp raw_videos handsign-container:/app/raw_videos
-  docker exec handsign-container python manage.py import_raw_videos --limit 150
-  \* Pro vypnutí aplikace stačí zadat: \docker stop handsign-container
+Replace `SECRET_KEY` before any shared or public deployment. Add Gemini and
+Stripe keys only when those features are needed.
+
+## Run with persistent data
+
+```bash
+docker volume create handsign-data
+docker run --name handsign \
+  --env-file .env \
+  -p 8080:8080 \
+  -v handsign-data:/app/data \
+  handsign:local
+```
+
+Open <http://localhost:8080/>.
+
+Run in the background by adding `-d`.
+
+## Logs and administration
+
+```bash
+docker logs -f handsign
+docker exec -it handsign python manage.py createsuperuser
+docker exec -it handsign python manage.py check
+docker exec -it handsign python manage.py test
+```
+
+## Video guides
+
+Large/local video files should usually be mounted rather than baked into the
+image:
+
+```bash
+docker run --name handsign \
+  --env-file .env \
+  -p 8080:8080 \
+  -v handsign-data:/app/data \
+  -v /absolute/path/to/raw_videos:/app/raw_videos:ro \
+  handsign:local
+```
+
+Store URLs in `Word.video_url_ru` and `Word.video_url_en`, for example
+`/raw_videos/help-ru.mp4` and `/raw_videos/help-en.mp4`.
+
+English and Czech UI select the English guide; Russian UI selects the Russian
+guide. Missing assets show an intentional placeholder.
+
+## Stop, restart, and update
+
+```bash
+docker stop handsign
+docker start handsign
+```
+
+To deploy a rebuilt image while preserving the named volume:
+
+```bash
+docker stop handsign
+docker rm handsign
+docker build -t handsign:local .
+docker run -d --name handsign \
+  --env-file .env \
+  -p 8080:8080 \
+  -v handsign-data:/app/data \
+  handsign:local
+```
+
+Removing the container does not remove the named `handsign-data` volume. Do not
+delete that volume unless the database is intentionally being discarded.
+
+## Production considerations
+
+The included container is a useful single-instance baseline, not a complete
+production platform.
+
+- Put it behind an HTTPS reverse proxy; webcam access requires a secure origin.
+- Restrict `ALLOWED_HOSTS` and CORS.
+- Persist `/app/data` or use a managed database.
+- Arrange backups before upgrades.
+- Review Gunicorn worker count for the available memory/CPU.
+- Configure SMTP, Stripe webhooks, observability, and secret storage.
+- Do not expose Django debug mode.
+- Do not commit `.env` or licensed video datasets.
+
+## Health check
+
+```bash
+curl http://localhost:8080/api/v1/health/
+```
+
+Expected response:
+
+```json
+{"status":"ok","service":"HandSign AI Tutor Backend","version":"1.0.0"}
+```

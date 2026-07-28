@@ -29,15 +29,13 @@ class User(AbstractUser):
 
     @property
     def current_streak(self):
-        from lessons.models import UserProgress
         from django.utils import timezone
         from datetime import timedelta
         now = timezone.now()
-        progress_qs = UserProgress.objects.filter(user=self)
         streak = 0
         current_date = now.date()
         while True:
-            has_activity = progress_qs.filter(updated_at__date=current_date).exists()
+            has_activity = self.xp_entries.filter(created_at__date=current_date).exists()
             if has_activity:
                 streak += 1
                 current_date -= timedelta(days=1)

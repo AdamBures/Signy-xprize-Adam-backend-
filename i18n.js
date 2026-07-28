@@ -292,6 +292,30 @@ Object.assign(dictionaries.cs, {
   'Reach out with clawed hands and pull inward.':'Natáhněte obě zahnuté ruce dopředu a přitáhněte je k sobě.'
 });
 
+dictionaries.en = {};
+Object.assign(dictionaries.en, {
+  'AccountSettings':'Account settings','UserDetailsCustomAvatar':'User details & custom avatar',
+  'YourName':'Your name','EmailAddress':'Email address','UploadCustomAvatarImage':'Upload a custom avatar',
+  'OrSelectPresetIcon':'Or select a preset icon','CustomUploadedImage':'Custom uploaded image',
+  'AdvancedSettings':'Advanced settings','Country':'Country','Pronouns':'Pronouns',
+  'SkinTonePreference':'Skin tone','ToneDefault':'Default','ToneLight':'Light',
+  'ToneMediumLight':'Medium light','ToneMedium':'Medium','ToneMediumDark':'Medium dark','ToneDark':'Dark',
+  'Sign guide language':'Sign guide language'
+});
+Object.assign(dictionaries.ru, {
+  'Lessons':'Уроки','Words':'Слова','Word library':'Словарь жестов','All words':'Все слова',
+  'Sign guide language':'Язык видеогайда','Manage your user account, security and custom avatar.':'Управляйте аккаунтом, безопасностью и аватаром.'
+});
+Object.assign(dictionaries.cs, {
+  'Lessons':'Lekce','Words':'Slova','Lesson library':'Knihovna lekcí','Word library':'Slovník znaků',
+  'All lessons':'Všechny lekce','All words':'Všechna slova',
+  'Practical signs, organized into small and friendly lessons.':'Praktické znaky uspořádané do krátkých a přehledných lekcí.',
+  'Sign guide language':'Jazyk videonávodu','Daily Goal':'Denní cíl',
+  'Contains {count} words':'Obsahuje {count} slov','Choose a word to practice:':'Vyberte slovo k procvičení:',
+  'New':'Nové','Shop':'Obchod','Coin Shop':'Obchod s mincemi','Your coins':'Vaše mince',
+  'words':'slov','done':'hotovo','Section':'Sekce'
+});
+
 const supported = ['en','ru','cs'];
 const lessonTips = {
   ru: {

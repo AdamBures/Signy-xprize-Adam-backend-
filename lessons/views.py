@@ -14,7 +14,9 @@ from .serializers import CategorySerializer, WordSerializer, WordListSerializer,
 
 class CategoryListView(generics.ListAPIView):
     def get_queryset(self):
-        return Category.objects.all()[:50]
+        # Data migrations may create placeholder categories before any words
+        # are assigned. Empty categories are not useful in the lesson filter.
+        return Category.objects.filter(words__isnull=False).distinct()[:50]
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
 
@@ -49,6 +51,8 @@ class WordListView(generics.ListAPIView):
                 'category_name': w.category.name if w.category else 'General',
                 'description': w.description,
                 'video_url': w.video_url,
+                'video_url_en': w.video_url_en,
+                'video_url_ru': w.video_url_ru,
                 'is_premium': w.is_premium,
                 'requires_face': w.requires_face,
                 'required_hands': w.required_hands,
@@ -74,6 +78,7 @@ class UserProgressListView(APIView):
         if not request.user.is_authenticated:
             # Fallback for unauthenticated guest
             return Response({
+                'authenticated': False,
                 'streak': 0,
                 'completed': 0,
                 'accuracy': 0,
@@ -100,19 +105,23 @@ class UserProgressListView(APIView):
         start_of_week = now.date() - timedelta(days=now.weekday())
         week_bars = [0] * 7
 
-        for p in progress_qs:
-            if p.updated_at:
-                p_date = p.updated_at.date()
-                delta_days = (p_date - start_of_week).days
+        from users.models import XPEntry
+        activity_entries = XPEntry.objects.filter(
+            user=user,
+            created_at__date__gte=start_of_week,
+        )
+        for entry in activity_entries:
+            if entry.created_at:
+                entry_date = entry.created_at.date()
+                delta_days = (entry_date - start_of_week).days
                 if 0 <= delta_days < 7:
-                    # Bar height based on score on that day (max 100)
-                    week_bars[delta_days] = max(week_bars[delta_days], int(p.best_score))
+                    week_bars[delta_days] = min(100, week_bars[delta_days] + entry.amount)
 
         # Real streak calculation
         streak = 0
         current_date = now.date()
         while True:
-            has_activity = progress_qs.filter(updated_at__date=current_date).exists()
+            has_activity = XPEntry.objects.filter(user=user, created_at__date=current_date).exists()
             if has_activity:
                 streak += 1
                 current_date -= timedelta(days=1)
@@ -126,6 +135,7 @@ class UserProgressListView(APIView):
 
         serializer = UserProgressSerializer(progress_qs, many=True)
         return Response({
+            'authenticated': True,
             'streak': streak,
             'completed': completed_count,
             'accuracy': accuracy,

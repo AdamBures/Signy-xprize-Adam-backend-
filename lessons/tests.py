@@ -13,6 +13,8 @@ class LessonsAPITests(TestCase):
             slug="mleko",
             category=self.category,
             description="Znak pro mléko",
+            video_url_en="https://cdn.example.com/milk-en.mp4",
+            video_url_ru="https://cdn.example.com/milk-ru.mp4",
             is_premium=False,
             reference_landmarks=[[{"x": 0, "y": 0, "z": 0} for _ in range(21)]]
         )
@@ -29,7 +31,10 @@ class LessonsAPITests(TestCase):
         url = reverse('category-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
+        # Data migrations seed the built-in lesson categories, so this test
+        # must verify its own fixture instead of assuming an empty database.
+        categories = response.data.get('results', response.data)
+        self.assertTrue(any(item['id'] == self.category.id for item in categories))
 
     def test_list_words(self):
         url = reverse('word-list')
@@ -46,3 +51,5 @@ class LessonsAPITests(TestCase):
         self.assertIn('requires_face', response.data)
         self.assertIn('required_hands', response.data)
         self.assertIn('guidance', response.data)
+        self.assertEqual(response.data['video_url_en'], 'https://cdn.example.com/milk-en.mp4')
+        self.assertEqual(response.data['video_url_ru'], 'https://cdn.example.com/milk-ru.mp4')

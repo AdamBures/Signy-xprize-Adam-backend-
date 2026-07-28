@@ -12,7 +12,7 @@ def process_video_landmarks(video_path, max_frames=60):
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         static_image_mode=False,
-        max_num_hands=1,
+        max_num_hands=2,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5
     )
@@ -31,14 +31,15 @@ def process_video_landmarks(video_path, max_frames=60):
         results = hands.process(rgb_frame)
 
         if results.multi_hand_landmarks:
-            hand_lms = results.multi_hand_landmarks[0]
+            # Flatten all detected hands in the frame (up to 2)
             frame_coords = []
-            for lm in hand_lms.landmark:
-                frame_coords.append({
-                    'x': round(lm.x, 4),
-                    'y': round(lm.y, 4),
-                    'z': round(lm.z, 4)
-                })
+            for hand_lms in results.multi_hand_landmarks:
+                for lm in hand_lms.landmark:
+                    frame_coords.append({
+                        'x': round(lm.x, 4),
+                        'y': round(lm.y, 4),
+                        'z': round(lm.z, 4)
+                    })
             sequence.append(frame_coords)
             frame_count += 1
 

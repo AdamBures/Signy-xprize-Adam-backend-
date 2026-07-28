@@ -1,6 +1,18 @@
 import { Api } from './api.js?v=5';
 import { I18n } from './i18n.js?v=5';
 
+// VERY VISIBLE DEBUG LOGGER FOR MOBILE
+const debugBox = document.createElement('div');
+debugBox.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.8);color:lime;font-family:monospace;font-size:11px;padding:10px;z-index:99999;pointer-events:none;max-height:30vh;overflow:auto;word-wrap:break-word;';
+if(document.body) document.body.appendChild(debugBox);
+else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(debugBox));
+window.logDebug = function(msg) {
+  debugBox.innerHTML = `<div>[${new Date().toISOString().split('T')[1].slice(0, -1)}] ${msg}</div>` + debugBox.innerHTML;
+};
+window.logDebug('APP INITIALIZED CORRECTLY V13');
+window.addEventListener('error', e => window.logDebug(`ERR: ${e.message}`));
+window.addEventListener('unhandledrejection', e => window.logDebug(`PROMISE ERR: ${e.reason}`));
+
 const APP_ROUTES = new Set(['home', 'dashboard', 'library', 'words', 'progress', 'leaderboard', 'profile', 'practice', 'translate']);
 const savedUser = (() => { try { return JSON.parse(localStorage.getItem('handsign_user')); } catch { return null; } })();
 const state = {
@@ -80,7 +92,9 @@ async function fetchLessonsFromApi(url = null) {
         time: w.time || '4 min',
         score: w.score || 'New',
         video_url: w.video_url || '',
-        category_name: w.category_name || ''
+        category_name: w.category_name || '',
+        required_hands: w.required_hands || 1,
+        requires_face: w.requires_face || false
       }));
       
       if (url) {
@@ -602,6 +616,7 @@ function profilePage(){
 
 function practice(){
   const l=lessons.find(x=>x.name===state.lesson)||lessons[0],back=state.returnRoute==='home'?'home':'library';
+  state.requiredHands=l.required_hands||1;state.requiresFace=l.requires_face||false;
   const rawTip=l.guidance?.tip||l.description||'Keep your hand relaxed and clearly visible.';
   const tip=escapeHtml(I18n.lessonTip(l.name,rawTip));
   const genericPosition=l.required_hands===2?'Keep both hands visible inside the guide.':'Keep your signing hand visible inside the guide.';
@@ -846,12 +861,15 @@ function leaderboardPage() {
       if (sentinel) window.leaderboardObserver.observe(sentinel);
   }
 
-function render(){
+async function render(){
   stopCamera();
+  if (lessons.length === 0 && (state.route === 'practice' || state.route === 'library' || state.route === 'dashboard')) {
+    await fetchLessonsFromApi();
+  }
   const views = { home, dashboard, library, words: wordsPage, progress:progressPage, leaderboard:leaderboardPage, profile:profilePage, practice, translate:translatePage };
   document.querySelector('#app').innerHTML = (views[state.route] || home)();
   I18n.apply(document.querySelector('#app')); bind(); window.scrollTo(0,0);
-  fetchLessonsFromApi();
+  if(lessons.length === 0) fetchLessonsFromApi();
   if(state.route!=='home' && state.route!=='') updateGlobalStreak();
   if(state.route==='dashboard') hydrateDashboard();
   if(state.route==='progress') hydrateProgressPage();
@@ -1458,19 +1476,33 @@ async function startCamera(){
   const video=document.querySelector('#camera'), empty=document.querySelector('#cameraEmpty'), btn=document.querySelector('#cameraToggle');
   if(!navigator.mediaDevices?.getUserMedia){toast('Camera requires localhost or HTTPS.');return false;}
   try{
+    window.logDebug('startCamera: getting stream');
     state.cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
+    window.logDebug('startCamera: setting srcObject');
     video.srcObject=state.cameraStream;
-    await video.play();
+    window.logDebug('startCamera: calling play()');
+    await video.play().catch(e => window.logDebug('play() threw: ' + e.message));
+    window.logDebug('startCamera: play() finished');
     empty.style.display='none';
     btn.textContent=I18n.t('Turn off camera');
-    await window.HandSignLandmarkProvider?.start?.(video,{
-      face:state.route==='translate'||state.requiresFace,
-      hands:state.route==='translate'?2:state.requiredHands,
-    });
+    window.logDebug('startCamera: calling tracker start()');
+    if (window.HandSignLandmarkProvider) {
+      await window.HandSignLandmarkProvider.start(video,{
+        face:state.route==='translate'||state.requiresFace,
+        hands:state.route==='translate'?2:state.requiredHands,
+      });
+      window.logDebug('startCamera: tracker start() finished');
+    } else {
+      window.logDebug('startCamera: window.HandSignLandmarkProvider is undefined!');
+    }
     if(state.helpEnabled) startGhostOverlay();
     return true;
   }
-  catch{toast('Camera access was blocked. Allow it in browser settings.');return false;}
+  catch(error){
+    window.logDebug('startCamera caught error: ' + error.message);
+    toast('Camera access was blocked. Allow it in browser settings.');
+    return false;
+  }
 }
 async function toggleCamera(){
   const video=document.querySelector('#camera'),empty=document.querySelector('#cameraEmpty'),btn=document.querySelector('#cameraToggle');
@@ -1816,8 +1848,19 @@ window.addEventListener('handsign-tracking',event=>{
   const label=enough
     ? (required===2?'Both hands detected':'Hand detected')
     : (required===2?`Show both hands (${count}/2)`:'Show your hand');
-  status.innerHTML=`<i class="${enough?'live-dot':'record-dot'}"></i> ${I18n.t(label)}`;
+  status.innerHTML=`<i class="${enough?'live-dot':'record-dot'}"></i> ${I18n.t(label)} [${event.detail?.sequenceLength||0}/12]`;
 });
+
+
+window.addEventListener('tracker-error', event => {
+  window.logDebug(`TRACKER ERR: ${event.detail}`);
+  const status = document.querySelector('#trackingStatus');
+  if(status) {
+    status.classList.add('offline');
+    status.innerHTML = `<i class="record-dot"></i> Error: ${event.detail}`;
+  }
+});
+
 window.addEventListener('handsign-captured',()=>{
   const button=document.querySelector('#checkSign'),attempt=document.querySelector('#attemptState'),banner=document.querySelector('#captureBanner');
   if(button)button.disabled=false;

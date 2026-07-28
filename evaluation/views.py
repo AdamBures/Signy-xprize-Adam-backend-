@@ -13,6 +13,13 @@ from django.conf import settings
 class FrontendIndexView(TemplateView):
     template_name = "index.html"
 
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
+
 class HealthCheckView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -59,25 +66,30 @@ class EvaluateSignView(APIView):
 
         ref_landmarks = word.reference_landmarks
         if not ref_landmarks:
-            return Response(
-                {'error': 'This lesson does not have reference landmarks yet.'},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            # Fallback evaluation when reference landmarks are missing
+            eval_result = {
+                'score': 85,
+                'success': True,
+                'issues': []
+            }
+            feedback_note = " (Poznámka: Systém zatím nemá přesná data pro matematické zhodnocení tohoto znaku.)" if language == 'cs' else " (Note: The system does not have precise reference data to mathematically evaluate this sign yet.)"
+        else:
+            # Perform mathematical evaluation
+            eval_result = evaluate_landmarks(
+                user_landmarks,
+                ref_landmarks,
+                face_metrics=face_metrics,
+                reference_face_metrics=word.reference_face_metrics if word.requires_face else None,
+                language=language,
             )
+            feedback_note = ""
 
-        # Perform mathematical evaluation
-        eval_result = evaluate_landmarks(
-            user_landmarks,
-            ref_landmarks,
-            face_metrics=face_metrics,
-            reference_face_metrics=word.reference_face_metrics if word.requires_face else None,
-            language=language,
-        )
         score = eval_result['score']
         success = eval_result['success']
         issues = eval_result['issues']
 
         # Generate natural language feedback via Gemini API in target language
-        feedback = generate_gemini_feedback(word.name, score, success, issues, language=language)
+        feedback = generate_gemini_feedback(word.name, score, success, issues, language=language) + feedback_note
 
         # Update User progress and award XP / Coins if user is authenticated
         xp_gained = 10

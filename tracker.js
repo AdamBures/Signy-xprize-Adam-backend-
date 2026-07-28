@@ -1,4 +1,4 @@
-const MAX_SEQUENCE_MS = 2600;
+const MAX_SEQUENCE_MS = 6000;
 const SAMPLE_INTERVAL_MS = 80;
 const HANDS_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240';
 const FACE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619';
@@ -81,8 +81,8 @@ async function init() {
     hands.setOptions({
       maxNumHands: 2,
       modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
+      minDetectionConfidence: 0.4,
+      minTrackingConfidence: 0.4,
     });
     hands.onResults(results => {
       latestHands = [...(results.multiHandLandmarks || [])]
@@ -93,6 +93,7 @@ async function init() {
           requiredHands,
           captureReady: capturedSequence.length >= 12,
           faceDetected: Boolean(latestFace),
+          sequenceLength: handSequence.length,
         },
       }));
     });
@@ -113,20 +114,33 @@ async function init() {
   }
 }
 
+let skipLogCount = 0;
 async function processFrame(now) {
   animationId = requestAnimationFrame(processFrame);
-  if (!running || busy || !video || video.readyState < 2) return;
+  if (!running || busy || !video || video.readyState < 2) {
+    if (skipLogCount < 5 && running) {
+      window.logDebug?.(`Skip frame. running:${running}, busy:${busy}, video:${!!video}, readyState:${video?.readyState}`);
+      skipLogCount++;
+    }
+    return;
+  }
+  skipLogCount = 0;
   busy = true;
   try {
     frameNumber += 1;
+    if (frameNumber === 1) window.logDebug?.('processFrame started, init() calling...');
     await init();
+    if (frameNumber === 1) window.logDebug?.(`init() done, window.Hands = ${typeof window.Hands}, hands = ${!!hands}`);
     if (hands) await hands.send({ image: video });
+    if (frameNumber === 1) window.logDebug?.('hands.send done.');
     if (faceEnabled && faceMesh && frameNumber % 2 === 0) {
       await faceMesh.send({ image: video });
     }
     sample(now);
   } catch (error) {
     console.info('On-device tracker frame skipped:', error);
+    window.logDebug?.(`TRACKER EXCEPTION: ${error.message}`);
+    window.dispatchEvent(new CustomEvent('tracker-error', { detail: error.message }));
   } finally {
     busy = false;
   }
